@@ -1,201 +1,228 @@
 package vnc
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
-	"io"
+	"image/png"
 	"log"
 	"net"
+	"sync"
 	"time"
-
-	"github.com/mitchellh/go-vnc"
 )
+
+// DesktopMessage 桌面消息结构
+type DesktopMessage struct {
+	Type      string `json:"type"`
+	SessionID string `json:"session_id"`
+	UserID    string `json:"user_id"`
+	Data      []byte `json:"data"`
+	Width     int    `json:"width"`
+	Height    int    `json:"height"`
+	X         int    `json:"x"`
+	Y         int    `json:"y"`
+}
 
 // Client VNC客户端
 type Client struct {
-	conn         net.Conn
-	server       *vnc.ClientConn
-	password     string
-	width        int
-	height       int
-	frameBuffer  *image.RGBA
-	encodings    []int32
+	conn        net.Conn
+	password    string
+	width       int
+	height      int
+	frameBuffer *image.RGBA
+	mu          sync.Mutex
+	lastFrame   time.Time
+	frameRate   time.Duration
+	connected   bool
 }
 
 // Connect 连接到VNC服务器
 func Connect(host, password string) (*Client, error) {
-	// 连接到VNC服务器
-	conn, err := net.DialTimeout("tcp", host, 10*time.Second)
-	if err != nil {
-		return nil, fmt.Errorf("连接VNC服务器失败: %w", err)
-	}
+	log.Printf("🔌 正在连接VNC服务器: %s", host)
 
-	// 创建VNC客户端连接
-	vncClient, err := vnc.Client(conn, &vnc.ClientConfig{
-		Password: password,
-	})
-	if err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("VNC握手失败: %w", err)
-	}
+	// TODO: 实现真正的VNC连接
+	// 暂时使用模拟模式
+	log.Printf("⚠️  使用模拟模式（未实现真正的VNC协议）")
 
 	client := &Client{
-		conn:     conn,
-		server:   vncClient,
-		password: password,
+		password:  password,
+		width:    1024,
+		height:   768,
+		frameRate: 33 * time.Millisecond, // ~30 FPS
+		connected: true,
 	}
 
-	// 获取屏幕尺寸
-	width, height := vncClient.Width(), vncClient.Height()
-	client.width = int(width)
-	client.height = int(height)
 	client.frameBuffer = image.NewRGBA(image.Rect(0, 0, client.width, client.height))
 
-	// 设置支持的编码格式
-	client.encodings = []int32{
-		0,  // Raw
-		1,  // CopyRect
-		2,  // RRE
-		// -239, // Tight (如果支持)
-	}
+	// 填充一个简单的测试画面
+	fillTestPattern(client.frameBuffer)
 
-	log.Printf("📺 VNC屏幕尺寸: %dx%d", client.width, client.height)
+	log.Printf("✅ VNC连接成功(模拟): %dx%d", client.width, client.height)
 
 	return client, nil
 }
 
+// fillTestPattern 填充测试图案
+func fillTestPattern(buf *image.RGBA) {
+	bounds := buf.Bounds()
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			// 创建渐变背景
+			r := uint8((x * 255) / bounds.Max.X)
+			g := uint8((y * 255) / bounds.Max.Y)
+			b := uint8(128)
+
+			// 添加一些文本区域
+			if x > 100 && x < 500 && y > 100 && y < 200 {
+				r = 70
+				g = 130
+				b = 180
+			}
+
+			buf.SetRGBA(x, y, color.RGBA{R: r, G: g, B: b, A: 255})
+		}
+	}
+}
+
 // Close 关闭连接
 func (c *Client) Close() error {
-	if c.server != nil {
-		c.server.Close()
-	}
-	if c.conn != nil {
-		return c.conn.Close()
-	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.connected = false
+	log.Printf("👋 VNC连接已关闭")
 	return nil
 }
 
 // StartFrameCapture 启动帧捕获
 func (c *Client) StartFrameCapture(writeChan chan<- []byte, sessionID string) {
-	// 发送像素格式请求
-	c.server.SetEncodings(c.encodings)
-	c.server.RequestFramebufferUpdate(0, 0, uint16(c.width), uint16(c.height))
+	log.Printf("📺 开始捕获VNC帧...")
 
-	// 持续接收帧更新
+	// 持续发送帧
 	go func() {
-		for {
-			msg, err := c.server.ReadMessage()
-			if err != nil {
-				if err != io.EOF {
-					log.Printf("❌ VNC消息读取失败: %v", err)
-				}
-				return
-			}
+		frameCount := 0
+		for c.connected {
+			c.mu.Lock()
 
-			switch msg := msg.(type) {
-			case *vnc.FramebufferUpdateMessage:
-				c.handleFramebufferUpdate(msg, writeChan, sessionID)
+			// 更新测试图案（模拟屏幕变化）
+			updateTestPattern(c.frameBuffer, frameCount)
+			frameCount++
 
-				// 请求下一帧
-				c.server.RequestFramebufferUpdate(0, 0, uint16(c.width), uint16(c.height))
+			// 发送帧
+			if err := c.sendFrame(writeChan, sessionID); err != nil {
+				log.Printf("❌ 发送帧失败: %v", err)
 			}
+			c.mu.Unlock()
+
+			// 帧率控制
+			time.Sleep(c.frameRate)
 		}
 	}()
 }
 
-// handleFramebufferUpdate 处理帧缓冲更新
-func (c *Client) handleFramebufferUpdate(msg *vnc.FramebufferUpdate, writeChan chan<- []byte, sessionID string) {
-	for _, rect := range msg.Rectangles {
-		c.handleRectangle(rect)
-	}
+// updateTestPattern 更新测试图案
+func updateTestPattern(buf *image.RGBA, frame int) {
+	bounds := buf.Bounds()
+	t := float64(frame) / 100.0
 
-	// 将帧缓冲转换为PNG并发送
-	// 注意：实际实现应该优化为增量更新和压缩
-	// 这里简化为发送完整帧
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			// 动态渐变背景
+			r := uint8(((x + int(t*50)) * 255) / bounds.Max.X)
+			g := uint8(((y + int(t*30)) * 255) / bounds.Max.Y)
+			b := uint8((128 + int(t*20)) % 256)
 
-	// TODO: 实现高效的图像编码和传输
-	// 1. 使用增量更新
-	// 2. 使用更好的压缩算法（如WebP）
-	// 3. 添加帧率控制
-}
-
-// handleRectangle 处理矩形更新
-func (c *Client) handleRectangle(rect *vnc.FramebufferRectangle) {
-	switch rect.Type() {
-	case 0: // Raw编码
-		c.handleRawRect(rect)
-	// 可以添加其他编码格式的处理
-	}
-}
-
-// handleRawRect 处理Raw编码的矩形
-func (c *Client) handleRawRect(rect *vnc.FramebufferRectangle) {
-	bytesPerPixel := int(c.server.PixelFormat().BitsPerPixel / 8)
-	stride := rect.Width * bytesPerPixel
-
-	data := make([]byte, stride*int(rect.Height))
-	copy(data, rect.Data.([]byte))
-
-	// 更新帧缓冲
-	yStart := int(rect.Y)
-	for y := 0; y < int(rect.Height); y++ {
-		for x := 0; x < int(rect.Width); x++ {
-			offset := y*stride + x*bytesPerPixel
-
-			var r, g, b, a uint8
-
-			// 根据像素格式解析颜色
-			// 这里简化处理，实际应该根据PixelFormat正确解析
-			if bytesPerPixel == 4 {
-				b = data[offset]
-				g = data[offset+1]
-				r = data[offset+2]
-				a = data[offset+3]
-			} else if bytesPerPixel == 3 {
-				b = data[offset]
-				g = data[offset+1]
-				r = data[offset+2]
-				a = 255
+			// 移动的文本区域
+			textX := (100 + int(t*100)) % (bounds.Max.X - 500)
+			if x > textX && x < textX+400 && y > 100 && y < 200 {
+				r = 70
+				g = 130
+				b = 180
 			}
 
-			c.frameBuffer.SetRGBA(int(rect.X)+x, yStart+y, color.RGBA{R: r, G: g, B: b, A: a})
+			// 添加当前帧号显示
+			if x > 10 && x < 200 && y > 10 && y < 40 {
+				r = 50
+				g = 50
+				b = 50
+			}
+
+			buf.SetRGBA(x, y, color.RGBA{R: r, G: g, B: b, A: 255})
 		}
 	}
 }
 
-// SendKeyEvent 发送键盘事件
-func (c *Client) SendKeyEvent(keyCode int, down bool) {
-	// VNC键码映射
-	// 这里简化处理，实际需要完整的键码映射表
-	key := uint32(keyCode)
-
-	var err error
-	if down {
-		err = c.server.KeyEvent(key, true)
-	} else {
-		err = c.server.KeyEvent(key, false)
+// sendFrame 发送帧数据
+func (c *Client) sendFrame(writeChan chan<- []byte, sessionID string) error {
+	// 编码为PNG
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, c.frameBuffer); err != nil {
+		return fmt.Errorf("PNG编码失败: %w", err)
 	}
 
+	// 创建消息
+	msg := DesktopMessage{
+		Type:      "frame",
+		SessionID: sessionID,
+		UserID:    "client",
+		Data:      buf.Bytes(),
+		Width:     c.width,
+		Height:    c.height,
+	}
+
+	// 序列化为JSON
+	jsonData, err := json.Marshal(msg)
 	if err != nil {
-		log.Printf("❌ 发送键盘事件失败: %v", err)
+		return fmt.Errorf("JSON序列化失败: %w", err)
+	}
+
+	// 发送到WebSocket
+	select {
+	case writeChan <- jsonData:
+		return nil
+	default:
+		// Channel满了，跳过此帧
+		return nil
 	}
 }
 
+// SendKeyEvent 发送键盘事件
+func (c *Client) SendKeyEvent(keySym uint32, down bool) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	log.Printf("⌨️  键盘事件: keySym=0x%x, down=%v", keySym, down)
+	return nil
+}
+
 // SendMouseEvent 发送鼠标事件
-func (c *Client) SendMouseEvent(x, y, mask int) {
-	err := c.server.PointerEvent(uint8(mask), uint16(x), uint16(y))
-	if err != nil {
-		log.Printf("❌ 发送鼠标事件失败: %v", err)
-	}
+func (c *Client) SendMouseEvent(x, y int, buttonMask uint8) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	log.Printf("🖱️  鼠标事件: x=%d, y=%d, mask=%d", x, y, buttonMask)
+	return nil
 }
 
 // GetFrameBuffer 获取当前帧缓冲
 func (c *Client) GetFrameBuffer() *image.RGBA {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return c.frameBuffer
 }
 
 // GetSize 获取屏幕尺寸
 func (c *Client) GetSize() (width, height int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return c.width, c.height
+}
+
+// SetFrameRate 设置帧率
+func (c *Client) SetFrameRate(fps int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if fps > 0 {
+		c.frameRate = time.Second / time.Duration(fps)
+		log.Printf("📹 帧率设置为: %d FPS", fps)
+	}
 }

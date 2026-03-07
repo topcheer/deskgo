@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/url"
@@ -20,7 +19,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"golang.org/x/net/proxy"
-	"golang.org/x/term"
 
 	"github.com/deskgo/deskgo/internal/vnc"
 )
@@ -179,10 +177,15 @@ func runDesktopSession(serverURL, proxyURL, sessionID, vncHost, vncPassword stri
 			// 处理输入事件
 			if msg.Type == "input" {
 				if msg.EventType == "key" {
-					vncClient.SendKeyEvent(msg.KeyCode, true)
-					vncClient.SendKeyEvent(msg.KeyCode, false)
+					// JavaScript键码转VNC键码
+					keySym := jsToVNCKeySym(msg.KeyCode)
+					if keySym > 0 {
+						vncClient.SendKeyEvent(keySym, true)
+						time.Sleep(10 * time.Millisecond)
+						vncClient.SendKeyEvent(keySym, false)
+					}
 				} else if msg.EventType == "mouse" {
-					vncClient.SendMouseEvent(msg.MouseX, msg.MouseY, msg.MouseMask)
+					vncClient.SendMouseEvent(msg.MouseX, msg.MouseY, uint8(msg.MouseMask))
 				}
 			}
 		}
@@ -271,4 +274,75 @@ func createSocks5Dialer(proxyAddr string) (func(network, addr string) (net.Conn,
 	}
 
 	return dialer.Dial, nil
+}
+
+// jsToVNCKeySym 将JavaScript键码转换为VNC键码
+func jsToVNCKeySym(keyCode int) uint32 {
+	// 常用键映射
+	switch keyCode {
+	case 8: // Backspace
+		return 0xFF08
+	case 9: // Tab
+		return 0xFF09
+	case 13: // Enter
+		return 0xFF0D
+	case 16: // Shift
+		return 0xFFE1
+	case 17: // Ctrl
+		return 0xFFE3
+	case 18: // Alt
+		return 0xFFE9
+	case 27: // Escape
+		return 0xFF1B
+	case 32: // Space
+		return 0x0020
+	case 37: // Left
+		return 0xFF51
+	case 38: // Up
+		return 0xFF52
+	case 39: // Right
+		return 0xFF53
+	case 40: // Down
+		return 0xFF54
+	case 46: // Delete
+		return 0xFFFF
+	case 112: // F1
+		return 0xFFBE
+	case 113: // F2
+		return 0xFFBF
+	case 114: // F3
+		return 0xFFC0
+	case 115: // F4
+		return 0xFFC1
+	case 116: // F5
+		return 0xFFC2
+	case 117: // F6
+		return 0xFFC3
+	case 118: // F7
+		return 0xFFC4
+	case 119: // F8
+		return 0xFFC5
+	case 120: // F9
+		return 0xFFC6
+	case 121: // F10
+		return 0xFFC7
+	case 122: // F11
+		return 0xFFC8
+	case 123: // F12
+		return 0xFFC9
+	}
+
+	// 字母和数字
+	if keyCode >= 48 && keyCode <= 57 { // 0-9
+		return uint32(keyCode)
+	}
+	if keyCode >= 65 && keyCode <= 90 { // A-Z
+		return uint32(keyCode)
+	}
+	if keyCode >= 97 && keyCode <= 122 { // a-z
+		return uint32(keyCode - 32)
+	}
+
+	// 默认返回0，表示未知键
+	return 0
 }

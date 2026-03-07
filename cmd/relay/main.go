@@ -18,7 +18,7 @@ func main() {
 	router := gin.Default()
 
 	// 加载HTML模板
-	router.LoadHTMLGlob("web/*")
+	router.LoadHTMLGlob("web/*.html")
 
 	// 静态文件服务
 	router.Static("/lib", "./web/lib")
