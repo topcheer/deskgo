@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeskGo - 远程桌面</title>
+    <link rel="stylesheet" href="/lib/rfb.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2d2d2d;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #3d3d3d;
+        }
+
+        .header h1 {
+            font-size: 1.2em;
+            color: #fff;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff4444;
+        }
+
+        .status-dot.connected {
+            background: #44ff44;
+        }
+
+        .status-dot.connecting {
+            background: #ffaa44;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-text {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 50px);
+        }
+
+        #screen {
+            flex: 1;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        #vnc_canvas {
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .loading {
+            text-align: center;
+            color: #888;
+        }
+
+        .loading-spinner {
+            border: 3px solid #3d3d3d;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .toolbar {
+            background: #2d2d2d;
+            padding: 10px 20px;
+            display: flex;
+            gap: 10px;
+            border-top: 1px solid #3d3d3d;
+        }
+
+        .toolbar button {
+            background: #3d3d3d;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toolbar button:hover {
+            background: #4d4d4d;
+        }
+
+        .toolbar button:active {
+            background: #5d5d5d;
+        }
+
+        .info-bar {
+            background: #2d2d2d;
+            padding: 5px 20px;
+            font-size: 0.8em;
+            color: #888;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🖥️ DeskGo 远程桌面</h1>
+        <div class="status">
+            <div class="status-dot" id="statusDot"></div>
+            <span class="status-text" id="statusText">连接中...</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="screen">
+            <div class="loading" id="loading">
+                <div class="loading-spinner"></div>
+                <p>正在连接到远程桌面...</p>
+            </div>
+            <canvas id="vnc_canvas" style="display: none;"></canvas>
+        </div>
+
+        <div class="info-bar" id="infoBar">
+            会话ID: <span id="sessionId">{{ .sessionID }}</span> |
+            分辨率: <span id="resolution">-</span> |
+            延迟: <span id="latency">-</span>
+        </div>
+    </div>
+
+    <script src="/lib/rfb.js"></script>
+    <script>
+        const sessionId = '{{ .sessionID }}';
+        const wsURL = `ws://${window.location.host}/api/desktop/${sessionId}?type=web&user_id=web-${Date.now()}`;
+
+        let ws = null;
+        let isConnected = false;
+
+        // 连接状态管理
+        function setStatus(status, text) {
+            const dot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+
+            dot.className = 'status-dot ' + status;
+            statusText.textContent = text;
+
+            if (status === 'connected') {
+                isConnected = true;
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('vnc_canvas').style.display = 'block';
+            }
+        }
+
+        // WebSocket连接
+        function connect() {
+            setStatus('connecting', '连接中...');
+
+            ws = new WebSocket(wsURL);
+
+            ws.onopen = () => {
+                console.log('WebSocket已连接');
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleMessage(data);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket错误:', error);
+                setStatus('error', '连接错误');
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket已关闭');
+                setStatus('disconnected', '连接已断开');
+                isConnected = false;
+
+                // 5秒后重连
+                setTimeout(() => {
+                    if (!isConnected) {
+                        connect();
+                    }
+                }, 5000);
+            };
+        }
+
+        // 处理消息
+        function handleMessage(data) {
+            switch (data.type) {
+                case 'init':
+                    console.log('初始化完成');
+                    break;
+
+                case 'frame':
+                    // 渲染帧数据到Canvas
+                    renderFrame(data.data);
+                    break;
+
+                case 'input':
+                    // 输入事件确认
+                    break;
+            }
+        }
+
+        // 渲染帧
+        function renderFrame(data) {
+            // TODO: 实现帧渲染逻辑
+            // 这里需要根据数据格式解码并绘制到Canvas
+            setStatus('connected', '已连接');
+        }
+
+        // 发送输入事件
+        function sendInput(eventType, data) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                return;
+            }
+
+            const message = {
+                type: 'input',
+                session_id: sessionId,
+                user_id: 'web',
+                event_type: eventType,
+                ...data
+            };
+
+            ws.send(JSON.stringify(message));
+        }
+
+        // 键盘事件
+        document.addEventListener('keydown', (e) => {
+            e.preventDefault();
+            sendInput('key', { key_code: e.keyCode });
+        });
+
+        document.addEventListener('keyup', (e) => {
+            e.preventDefault();
+            sendInput('key', { key_code: e.keyCode });
+        });
+
+        // 鼠标事件
+        const canvas = document.getElementById('vnc_canvas');
+        let mouseButtonMask = 0;
+
+        canvas.addEventListener('mousedown', (e) => {
+            mouseButtonMask |= (1 << e.button);
+            sendInput('mouse', {
+                mouse_x: e.offsetX,
+                mouse_y: e.offsetY,
+                mouse_mask: mouseButtonMask
+            });
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            mouseButtonMask &= ~(1 << e.button);
+            sendInput('mouse', {
+                mouse_x: e.offsetX,
+                mouse_y: e.offsetY,
+                mouse_mask: mouseButtonMask
+            });
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            sendInput('mouse', {
+                mouse_x: e.offsetX,
+                mouse_y: e.offsetY,
+                mouse_mask: mouseButtonMask
+            });
+        });
+
+        // 启动连接
+        connect();
+    </script>
+</body>
+</html>
