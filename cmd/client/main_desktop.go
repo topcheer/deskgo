@@ -3,46 +3,6 @@
 
 package main
 
-/*
-#include <ApplicationServices/ApplicationServices.h>
-
-void execMouseMove(int x, int y) {
-    CGEventRef move = CGEventCreateMouseEvent(NULL, kCGEventMouseMoved, CGPointMake(x, y), 0);
-    CGEventPost(kCGHIDEventTap, move);
-    CFRelease(move);
-}
-
-void execMouseButton(char* button, bool down, int x, int y) {
-    CGEventType type;
-    CGMouseButton buttonType;
-
-    if (strcmp(button, "left") == 0) {
-        type = down ? kCGEventLeftMouseDown : kCGEventLeftMouseUp;
-        buttonType = kCGMouseButtonLeft;
-    } else if (strcmp(button, "right") == 0) {
-        type = down ? kCGEventRightMouseDown : kCGEventRightMouseUp;
-        buttonType = kCGMouseButtonRight;
-    } else {
-        type = down ? kCGEventOtherMouseDown : kCGEventOtherMouseUp;
-        buttonType = kCGMouseButtonCenter;
-    }
-
-    CGEventRef click = CGEventCreateMouseEvent(NULL, type, CGPointMake(x, y), buttonType);
-    CGEventPost(kCGHIDEventTap, click);
-    CFRelease(click);
-}
-
-void execKeyTap(int keycode) {
-    CGEventRef keyDown = CGEventCreateKeyboardEvent(NULL, (CGKeyCode)keycode, true);
-    CGEventRef keyUp = CGEventCreateKeyboardEvent(NULL, (CGKeyCode)keycode, false);
-    CGEventPost(kCGHIDEventTap, keyDown);
-    CFRelease(keyDown);
-    CGEventPost(kCGHIDEventTap, keyUp);
-    CFRelease(keyUp);
-}
-*/
-import "C"
-
 import (
 	"bytes"
 	"encoding/json"
@@ -53,11 +13,9 @@ import (
 	"io"
 	"log"
 	"net/url"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -672,118 +630,20 @@ func (c *DesktopCapture) handleMouseEvent(event *ControlEvent) {
 func (c *DesktopCapture) handleKeyboardEvent(event *ControlEvent) {
 	jsKeyCode := event.KeyCode
 
-	// 映射 JavaScript keyCode 到 macOS CGKeyCode
-	macKeyCode := mapJSKeyCodeToMacKeyCode(jsKeyCode)
-	if macKeyCode == -1 {
+	platformKeyCode := mapJSKeyCodeToPlatformKeyCode(jsKeyCode)
+	if platformKeyCode == -1 {
 		log.Printf("⚠️  未映射的按键: JS keyCode=%d", jsKeyCode)
 		return
 	}
 
 	// 处理按键释放（负数表示释放）
 	if event.KeyCode < 0 {
-		c.keyToggle(macKeyCode, false)
+		c.keyToggle(platformKeyCode, false)
 		return
 	}
 
 	// 按下键
-	c.keyTap(macKeyCode)
-}
-
-// mapJSKeyCodeToMacKeyCode 映射 JavaScript keyCode 到 macOS CGKeyCode
-// JavaScript keyCode: https://www.keycodes.org/
-// macOS CGKeyCode: https://developer.apple.com/documentation/coregraphics/cgkeycode
-func mapJSKeyCodeToMacKeyCode(jsKeyCode int) int {
-	// 常用按键映射
-	keyMap := map[int]int{
-		// 字母键
-		65: 0,  // A -> kVK_ANSI_A
-		66: 11, // B -> kVK_ANSI_B
-		67: 8,  // C -> kVK_ANSI_C
-		68: 2,  // D -> kVK_ANSI_D
-		69: 14, // E -> kVK_ANSI_E
-		70: 3,  // F -> kVK_ANSI_F
-		71: 5,  // G -> kVK_ANSI_G
-		72: 4,  // H -> kVK_ANSI_H
-		73: 34, // I -> kVK_ANSI_I
-		74: 38, // J -> kVK_ANSI_J
-		75: 40, // K -> kVK_ANSI_K
-		76: 37, // L -> kVK_ANSI_L
-		77: 46, // M -> kVK_ANSI_M
-		78: 45, // N -> kVK_ANSI_N
-		79: 31, // O -> kVK_ANSI_O
-		80: 35, // P -> kVK_ANSI_P
-		81: 12, // Q -> kVK_ANSI_Q
-		82: 13, // R -> kVK_ANSI_R
-		83: 1,  // S -> kVK_ANSI_S
-		84: 17, // T -> kVK_ANSI_T
-		85: 32, // U -> kVK_ANSI_U
-		86: 9,  // V -> kVK_ANSI_V
-		87: 7,  // W -> kVK_ANSI_W
-		88: 10, // X -> kVK_ANSI_X
-		89: 6,  // Y -> kVK_ANSI_Y
-		90: 39, // Z -> kVK_ANSI_Z
-
-		// 数字键
-		48: 29, // 0 -> kVK_ANSI_0
-		49: 18, // 1 -> kVK_ANSI_1
-		50: 19, // 2 -> kVK_ANSI_2
-		51: 20, // 3 -> kVK_ANSI_3
-		52: 21, // 4 -> kVK_ANSI_4
-		53: 23, // 5 -> kVK_ANSI_5
-		54: 22, // 6 -> kVK_ANSI_6
-		55: 26, // 7 -> kVK_ANSI_7
-		56: 28, // 8 -> kVK_ANSI_8
-		57: 25, // 9 -> kVK_ANSI_9
-
-		// 功能键
-		112: 122, // F1
-		113: 120, // F2
-		114: 99,  // F3
-		115: 118, // F4
-		116: 96,  // F5
-		117: 97,  // F6
-		118: 98,  // F7
-		119: 100, // F8
-		120: 101, // F9
-		121: 109, // F10
-		122: 103, // F11
-		123: 111, // F12
-
-		// 特殊键
-		8:  51,  // Backspace -> kVK_Delete
-		9:  48,  // Tab -> kVK_Tab
-		13: 36,  // Enter -> kVK_Return
-		16: 54,  // Shift -> kVK_Shift
-		17: 55,  // Control -> kVK_Control
-		18: 56,  // Option/Alt -> kVK_Option
-		27: 53,  // Escape -> kVK_Escape
-		32: 49,  // Space -> kVK_Space
-		37: 123, // Left Arrow -> kVK_LeftArrow
-		38: 126, // Up Arrow -> kVK_UpArrow
-		39: 124, // Right Arrow -> kVK_RightArrow
-		40: 125, // Down Arrow -> kVK_DownArrow
-		46: 117, // Delete -> kVK_ForwardDelete
-
-		// 符号键
-		186: 41, // ; -> kVK_ANSI_Semicolon
-		187: 24, // = -> kVK_ANSI_Equal
-		188: 43, // , -> kVK_ANSI_Comma
-		189: 27, // - -> kVK_ANSI_Minus
-		190: 47, // . -> kVK_ANSI_Period
-		191: 44, // / -> kVK_ANSI_Slash
-		192: 50, // ` -> kVK_ANSI_Grave
-		219: 33, // [ -> kVK_ANSI_LeftBracket
-		220: 30, // \ -> kVK_ANSI_Backslash
-		221: 42, // ] -> kVK_ANSI_RightBracket
-		222: 41, // ' -> kVK_ANSI_Quote
-	}
-
-	if macKey, ok := keyMap[jsKeyCode]; ok {
-		return macKey
-	}
-
-	// 未映射的键
-	return -1
+	c.keyTap(platformKeyCode)
 }
 
 // mapCoordsToScreen 将Canvas坐标映射到屏幕坐标
@@ -824,101 +684,43 @@ func (c *DesktopCapture) mapCoordsToScreen(canvasX, canvasY int) (int, int) {
 	return screenX, screenY
 }
 
-// moveMouse 移动鼠标（使用CGO for macOS）
 func (c *DesktopCapture) moveMouse(x, y int) error {
-	if runtime.GOOS == "darwin" {
-		// macOS: 使用 CGO 调用 Core Graphics
-		return c.execMouseMove(x, y)
-	}
-	log.Printf("🖱️  鼠标移动: (%d, %d) [平台不支持]", x, y)
-	return nil
+	return platformMouseMove(x, y)
 }
 
 // handleMouseButton 处理鼠标按钮
 func (c *DesktopCapture) handleMouseButton(mask int, x, y int) error {
-	if runtime.GOOS == "darwin" {
-		// macOS: 使用 CGO
-		// 左键 (bit 0)
-		if mask&1 != 0 && !c.mouseLeftDown {
-			c.execMouseButton("left", true, x, y)
-			c.mouseLeftDown = true
-		} else if (mask&1) == 0 && c.mouseLeftDown {
-			c.execMouseButton("left", false, x, y)
-			c.mouseLeftDown = false
-		}
-
-		// 右键 (bit 1)
-		if mask&2 != 0 && !c.mouseRightDown {
-			c.execMouseButton("right", true, x, y)
-			c.mouseRightDown = true
-		} else if (mask&2) == 0 && c.mouseRightDown {
-			c.execMouseButton("right", false, x, y)
-			c.mouseRightDown = false
-		}
-
-		// 中键 (bit 2)
-		if mask&4 != 0 && !c.mouseMiddleDown {
-			c.execMouseButton("middle", true, x, y)
-			c.mouseMiddleDown = true
-		} else if (mask&4) == 0 && c.mouseMiddleDown {
-			c.execMouseButton("middle", false, x, y)
-			c.mouseMiddleDown = false
-		}
+	if err := c.syncMouseButton("left", mask&1 != 0, &c.mouseLeftDown, x, y); err != nil {
+		return err
 	}
+	if err := c.syncMouseButton("right", mask&2 != 0, &c.mouseRightDown, x, y); err != nil {
+		return err
+	}
+	if err := c.syncMouseButton("middle", mask&4 != 0, &c.mouseMiddleDown, x, y); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *DesktopCapture) syncMouseButton(button string, down bool, state *bool, x, y int) error {
+	if down == *state {
+		return nil
+	}
+	if err := platformMouseButton(button, down, x, y); err != nil {
+		return err
+	}
+	*state = down
 	return nil
 }
 
 // keyTap 按键
 func (c *DesktopCapture) keyTap(keycode int) error {
-	if runtime.GOOS == "darwin" {
-		// macOS: 使用 CGEvent
-		c.execKeyTap(keycode)
-	} else {
-		log.Printf("⌨️  按键: keycode=%d [平台不支持]", keycode)
-	}
-	return nil
+	return platformKeyTap(keycode)
 }
 
 // keyToggle 按键切换
 func (c *DesktopCapture) keyToggle(keycode int, down bool) error {
-	if runtime.GOOS == "darwin" {
-		// macOS: 使用 CGEvent
-		return c.execKeyToggle(keycode, down)
-	} else {
-		log.Printf("⌨️  键切换: keycode=%d, down=%v [平台不支持]", keycode, down)
-	}
-	return nil
-}
-
-// execMouseMove 执行鼠标移动（macOS CGO）
-func (c *DesktopCapture) execMouseMove(x, y int) error {
-	C.execMouseMove(C.int(x), C.int(y))
-	return nil
-}
-
-// execMouseButton 执行鼠标按钮点击（macOS CGO）
-func (c *DesktopCapture) execMouseButton(button string, down bool, x, y int) error {
-	cButton := C.CString(button)
-	defer C.free(unsafe.Pointer(cButton))
-
-	C.execMouseButton(cButton, C.bool(down), C.int(x), C.int(y))
-	return nil
-}
-
-// execKeyTap 执行按键点击（macOS CGO）
-func (c *DesktopCapture) execKeyTap(keycode int) error {
-	C.execKeyTap(C.int(keycode))
-	return nil
-}
-
-// execKeyToggle 执行按键切换（macOS CGO）
-func (c *DesktopCapture) execKeyToggle(keycode int, down bool) error {
-	// CGO实现需要单独的toggle函数
-	// 暂时使用tap实现（仅在按下时执行）
-	if !down {
-		return nil
-	}
-	return c.execKeyTap(keycode)
+	return platformKeyToggle(keycode, down)
 }
 
 func (c *DesktopCapture) getBounds() image.Rectangle {

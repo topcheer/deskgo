@@ -17,6 +17,7 @@ vendor/
 # Build output
 deskgo-*
 relay-server
+downloads/
 
 # IDE
 .vscode/

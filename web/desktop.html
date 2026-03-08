@@ -8,6 +8,18 @@
     <meta http-equiv="Expires" content="0">
     <title>DeskGo - 远程桌面 v2.0</title>
     <style>
+        :root {
+            color-scheme: dark;
+            --bg: #020617;
+            --panel: rgba(15, 23, 42, 0.78);
+            --panel-border: rgba(148, 163, 184, 0.22);
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --accent: #818cf8;
+            --accent-strong: #22c55e;
+            --danger: #fb7185;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -15,114 +27,265 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #1a1a1a;
-            color: #fff;
+            font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(99, 102, 241, 0.22), transparent 34%),
+                radial-gradient(circle at top right, rgba(34, 197, 94, 0.18), transparent 28%),
+                linear-gradient(180deg, #0f172a 0%, #020617 100%);
+            color: var(--text);
+            min-height: 100vh;
             overflow: hidden;
         }
 
+        body.stream-active .header,
+        body.stream-active .info-bar {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        body.stream-active .header {
+            transform: translateY(-24px);
+        }
+
+        body.stream-active .info-bar {
+            transform: translateY(24px);
+        }
+
+        body.stream-active .container {
+            height: 100vh;
+        }
+
+        .header,
+        .info-bar {
+            position: relative;
+            z-index: 2;
+            margin: 16px 16px 0;
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            transition: opacity 220ms ease, transform 220ms ease;
+        }
+
         .header {
-            background: #2d2d2d;
-            padding: 10px 20px;
+            border-radius: 22px;
+            padding: 16px 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid #3d3d3d;
+            gap: 16px;
+            box-shadow: 0 24px 48px rgba(2, 6, 23, 0.38);
         }
 
-        .header h1 {
-            font-size: 1.2em;
-            color: #fff;
+        .brand {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        .brand-mark {
+            width: 14px;
+            height: 14px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #818cf8, #22c55e);
+            box-shadow: 0 0 0 8px rgba(129, 140, 248, 0.14);
+            flex: 0 0 auto;
+        }
+
+        .brand-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .brand-eyebrow {
+            color: var(--muted);
+            font-size: 0.72rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .brand-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #f8fafc;
         }
 
         .status {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 14px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .control-toggle {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
-            font-size: 0.9em;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.62);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            font-size: 0.92rem;
+            color: var(--text);
         }
 
-        .control-toggle input {
+        .control-toggle input,
+        .control-toggle label,
+        .retry-button {
             cursor: pointer;
         }
 
         .control-toggle label {
-            cursor: pointer;
             user-select: none;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.62);
+            border: 1px solid rgba(148, 163, 184, 0.18);
         }
 
         .status-dot {
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: #ff4444;
-            transition: background 0.3s;
+            background: var(--danger);
+            transition: background 0.25s ease;
         }
 
         .status-dot.connected {
-            background: #44ff44;
+            background: var(--accent-strong);
         }
 
         .status-dot.connecting {
-            background: #ffaa44;
+            background: #fbbf24;
             animation: pulse 1s infinite;
+        }
+
+        .status-dot.disconnected,
+        .status-dot.error {
+            background: var(--danger);
         }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            50% { opacity: 0.45; }
         }
 
         .status-text {
-            color: #888;
-            font-size: 0.9em;
+            color: var(--muted);
+            font-size: 0.92rem;
         }
 
         .container {
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 50px);
+            height: calc(100vh - 32px);
+            transition: height 220ms ease;
         }
 
         #screen {
             flex: 1;
-            background: #000;
+            margin: 16px;
+            border-radius: 28px;
+            background:
+                linear-gradient(180deg, rgba(15, 23, 42, 0.86), rgba(2, 6, 23, 0.96)),
+                #000;
+            border: 1px solid rgba(148, 163, 184, 0.16);
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
             overflow: hidden;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 24px 60px rgba(2, 6, 23, 0.46);
+        }
+
+        #screen::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at top, rgba(129, 140, 248, 0.18), transparent 45%);
+            pointer-events: none;
         }
 
         #vnc_canvas {
+            position: relative;
+            z-index: 1;
             max-width: 100%;
             max-height: 100%;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
             image-rendering: pixelated;
+            box-shadow: 0 24px 60px rgba(2, 6, 23, 0.34);
         }
 
         .loading {
+            position: absolute;
+            inset: 0;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(2, 6, 23, 0.38);
+        }
+
+        .loading-card {
+            width: min(100%, 460px);
+            padding: 28px;
+            border-radius: 24px;
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
             text-align: center;
-            color: #888;
+            box-shadow: 0 24px 60px rgba(2, 6, 23, 0.42);
         }
 
         .loading-spinner {
-            border: 3px solid #3d3d3d;
-            border-top: 3px solid #667eea;
+            border: 3px solid rgba(148, 163, 184, 0.18);
+            border-top-color: var(--accent);
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 42px;
+            height: 42px;
             animation: spin 1s linear infinite;
-            margin: 20px auto;
+            margin: 0 auto 18px;
+        }
+
+        .loading-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #f8fafc;
+        }
+
+        .loading-detail {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .retry-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+            padding: 11px 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(129, 140, 248, 0.45);
+            background: rgba(99, 102, 241, 0.18);
+            color: #eef2ff;
+            font-weight: 600;
+        }
+
+        .retry-button[hidden] {
+            display: none;
         }
 
         @keyframes spin {
@@ -131,79 +294,121 @@
         }
 
         .info-bar {
-            background: #2d2d2d;
-            padding: 8px 20px;
-            font-size: 0.85em;
-            color: #888;
+            margin: 0 16px 16px;
+            border-radius: 22px;
+            padding: 14px 20px;
+            font-size: 0.86rem;
+            color: var(--muted);
             display: flex;
-            gap: 20px;
-            justify-content: center;
-            border-top: 1px solid #3d3d3d;
+            gap: 18px;
+            justify-content: space-between;
+            flex-wrap: wrap;
         }
 
-        .info-item {
-            display: flex;
+        .info-item,
+        .quality-indicator {
+            display: inline-flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
         }
 
         .info-value {
-            color: #667eea;
-            font-weight: bold;
-        }
-
-        .quality-indicator {
-            display: flex;
-            align-items: center;
-            gap: 5px;
+            color: #c7d2fe;
+            font-weight: 700;
         }
 
         .quality-bar {
-            width: 50px;
+            width: 56px;
             height: 4px;
-            background: #3d3d3d;
-            border-radius: 2px;
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 999px;
             overflow: hidden;
         }
 
         .quality-fill {
             height: 100%;
-            background: linear-gradient(90deg, #ff4444, #ffaa44, #44ff44);
-            transition: width 0.3s;
+            background: linear-gradient(90deg, #f97316, #eab308, #22c55e);
+            transition: width 0.3s ease;
         }
 
-        /* 响应式设计 */
         @media (max-width: 768px) {
-            .header h1 {
-                font-size: 1em;
+            .header,
+            .info-bar,
+            #screen {
+                margin-left: 12px;
+                margin-right: 12px;
+            }
+
+            .header {
+                padding: 14px 16px;
+                border-radius: 20px;
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .status {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            #screen {
+                margin-top: 12px;
+                margin-bottom: 12px;
+                border-radius: 24px;
             }
 
             .info-bar {
-                flex-wrap: wrap;
-                font-size: 0.75em;
+                gap: 12px;
+                font-size: 0.78rem;
+            }
+
+            .loading-card {
+                padding: 22px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
             }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🖥️ DeskGo 远程桌面</h1>
+        <div class="brand">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <div class="brand-copy">
+                <span class="brand-eyebrow">DeskGo Session</span>
+                <strong class="brand-title">远程桌面串流</strong>
+            </div>
+        </div>
         <div class="status">
             <div class="control-toggle">
                 <input type="checkbox" id="controlToggle" checked>
                 <label for="controlToggle">启用控制</label>
             </div>
-            <div class="status-dot" id="statusDot"></div>
-            <span class="status-text" id="statusText">连接中...</span>
+            <div class="status-pill">
+                <div class="status-dot" id="statusDot"></div>
+                <span class="status-text" id="statusText">连接中...</span>
+            </div>
         </div>
     </div>
 
     <div class="container">
         <div id="screen">
             <div class="loading" id="loading">
-                <div class="loading-spinner"></div>
-                <p>正在连接到远程桌面...</p>
-                <p style="font-size: 0.9em; margin-top: 10px; color: #666;">会话ID: <span id="sessionIdDisplay"></span></p>
+                <div class="loading-card">
+                    <div class="loading-spinner"></div>
+                    <p class="loading-title" id="loadingTitle">正在连接到远程桌面...</p>
+                    <p class="loading-detail" id="loadingDetail">会话 ID：{{ .sessionID }}</p>
+                    <button id="retryButton" class="retry-button" hidden>重新连接</button>
+                </div>
             </div>
             <canvas id="vnc_canvas" style="display: none;"></canvas>
         </div>
@@ -246,13 +451,16 @@
         let frameCount = 0;
         let lastFrameTime = performance.now();
         let fpsUpdateInterval = null;
+        let canvasListenersInitialized = false;
+        let reconnectTimer = null;
+        let controlHandshakeTimer = null;
+        let receivedFrame = false;
+        let sessionEnded = false;
+        let lastDisconnectMessage = '连接已断开';
 
         // H.264 解码器
         let h264Decoder = null;
         let useH264 = false;
-        let sps = null;
-        let pps = null;
-
         // 检测编解码器支持
         function detectCodecSupport() {
             return {
@@ -270,7 +478,64 @@
         console.log('完整对象:', codecSupport);
         console.log('======================');
 
-        // 连接状态管理
+        function setStreamChromeHidden(hidden) {
+            document.body.classList.toggle('stream-active', hidden);
+        }
+
+        function clearReconnectTimer() {
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+        }
+
+        function clearControlHandshakeTimer() {
+            if (controlHandshakeTimer) {
+                clearInterval(controlHandshakeTimer);
+                controlHandshakeTimer = null;
+            }
+        }
+
+        function sendViewerHandshake() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                return;
+            }
+
+            ws.send(JSON.stringify({
+                type: 'codec_support',
+                h264: codecSupport.h264,
+                jpeg: codecSupport.jpeg
+            }));
+
+            ws.send(JSON.stringify({
+                type: 'request_keyframe'
+            }));
+        }
+
+        function startControlHandshake() {
+            clearControlHandshakeTimer();
+            sendViewerHandshake();
+            controlHandshakeTimer = setInterval(() => {
+                if (receivedFrame || !ws || ws.readyState !== WebSocket.OPEN || sessionEnded) {
+                    clearControlHandshakeTimer();
+                    return;
+                }
+                sendViewerHandshake();
+            }, 1000);
+        }
+
+        function showLoading(title, detail, showRetry = false) {
+            document.getElementById('loadingTitle').textContent = title;
+            document.getElementById('loadingDetail').textContent = detail;
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('retryButton').hidden = !showRetry;
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('retryButton').hidden = true;
+        }
+
         function setStatus(status, text) {
             const dot = document.getElementById('statusDot');
             const statusText = document.getElementById('statusText');
@@ -280,10 +545,97 @@
 
             if (status === 'connected') {
                 isConnected = true;
-                document.getElementById('loading').style.display = 'none';
-                // Canvas将在init消息中初始化和显示
+            } else {
+                isConnected = false;
             }
         }
+
+        function stopPlaybackState() {
+            clearReconnectTimer();
+            clearControlHandshakeTimer();
+
+            if (fpsUpdateInterval) {
+                clearInterval(fpsUpdateInterval);
+                fpsUpdateInterval = null;
+            }
+
+            if (h264Decoder) {
+                h264Decoder.close();
+                h264Decoder = null;
+            }
+
+            useH264 = false;
+            frameCount = 0;
+            receivedFrame = false;
+            setStreamChromeHidden(false);
+        }
+
+        async function ensureViewerReady(codec) {
+            if (!canvas) {
+                canvas = document.getElementById('vnc_canvas');
+            }
+
+            if (!ctx) {
+                ctx = canvas.getContext('2d', { alpha: false });
+            }
+
+            canvas.style.display = 'block';
+
+            if (!fpsUpdateInterval) {
+                lastFrameTime = performance.now();
+                fpsUpdateInterval = setInterval(updateFPS, 1000);
+            }
+
+            if (!canvasListenersInitialized) {
+                setupCanvasEventListeners();
+                canvasListenersInitialized = true;
+            }
+
+            if (codec === 'h264' && codecSupport.h264 && !h264Decoder) {
+                try {
+                    h264Decoder = new H264Decoder();
+                    await h264Decoder.init();
+                    useH264 = true;
+                    console.log('✅ 已启用 H.264 解码');
+                } catch (e) {
+                    console.error('初始化 H.264 解码器失败:', e);
+                    useH264 = false;
+                }
+            } else if (codec !== 'h264' && h264Decoder) {
+                h264Decoder.close();
+                h264Decoder = null;
+                useH264 = false;
+            }
+
+            setStatus('connected', '串流中');
+            hideLoading();
+            setStreamChromeHidden(true);
+        }
+
+        function scheduleReconnect(delay = 5000) {
+            clearReconnectTimer();
+            reconnectTimer = setTimeout(() => {
+                if (!isConnected && !sessionEnded) {
+                    connect();
+                }
+            }, delay);
+        }
+
+        function decodeBase64Bytes(encoded) {
+            const binaryString = atob(encoded);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes;
+        }
+
+        document.getElementById('retryButton').addEventListener('click', () => {
+            sessionEnded = false;
+            lastDisconnectMessage = '正在重新连接会话...';
+            stopPlaybackState();
+            connect();
+        });
 
         // 更新帧率统计
         function updateFPS() {
@@ -694,27 +1046,23 @@
 
         // WebSocket连接
         function connect() {
+            clearReconnectTimer();
+            sessionEnded = false;
             setStatus('connecting', '连接中...');
-            document.getElementById('sessionIdDisplay').textContent = sessionId;
+            setStreamChromeHidden(false);
+            showLoading('正在连接到远程桌面...', `会话 ID：${sessionId}`);
             document.getElementById('sessionId').textContent = sessionId.substring(0, 8);
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.close();
+            }
 
             ws = new WebSocket(wsURL);
 
             ws.onopen = () => {
                 setStatus('connecting', '等待客户端...');
-
-                // 发送编解码器支持信息
-                ws.send(JSON.stringify({
-                    type: 'codec_support',
-                    h264: codecSupport.h264,
-                    jpeg: codecSupport.jpeg
-                }));
-
-                // 请求立即发送关键帧（初始化解码器）
-                console.log('📹 请求发送关键帧...');
-                ws.send(JSON.stringify({
-                    type: 'request_keyframe'
-                }));
+                showLoading('等待桌面客户端接入...', `会话 ID：${sessionId}`);
+                startControlHandshake();
             };
 
             ws.onmessage = async (event) => {
@@ -729,30 +1077,30 @@
             ws.onerror = (error) => {
                 console.error('WebSocket错误:', error);
                 setStatus('error', '连接错误');
+                setStreamChromeHidden(false);
+                showLoading('连接出现问题', '与 Relay 的连接出现错误，请检查网络或稍后重试。', true);
             };
 
-            ws.onclose = () => {
+            ws.onclose = (event) => {
+                stopPlaybackState();
+
+                if (!sessionEnded && event && typeof event.reason === 'string' &&
+                    event.reason.includes('desktop client')) {
+                    sessionEnded = true;
+                    lastDisconnectMessage = '桌面客户端已断开，会话已结束。请重新启动 CLI 后再连接。';
+                }
+
+                if (sessionEnded) {
+                    setStatus('disconnected', '会话已结束');
+                    showLoading('桌面客户端已断开', lastDisconnectMessage || '当前会话已经结束，请重新启动 CLI 后再连接。', true);
+                    return;
+                }
+
+                const closeReason = event && event.reason ? event.reason : '连接已断开';
+                lastDisconnectMessage = closeReason;
                 setStatus('disconnected', '连接已断开');
-                isConnected = false;
-
-                // 停止FPS更新
-                if (fpsUpdateInterval) {
-                    clearInterval(fpsUpdateInterval);
-                }
-
-                // 关闭 H.264 解码器
-                if (h264Decoder) {
-                    h264Decoder.close();
-                    h264Decoder = null;
-                    useH264 = false;
-                }
-
-                // 5秒后重连
-                setTimeout(() => {
-                    if (!isConnected) {
-                        connect();
-                    }
-                }, 5000);
+                showLoading('连接已断开', '正在尝试重新连接远程桌面...', true);
+                scheduleReconnect(5000);
             };
         }
 
@@ -760,87 +1108,22 @@
         async function handleMessage(data) {
             switch (data.type) {
                 case 'init':
-                    // 初始化Canvas
-                    canvas = document.getElementById('vnc_canvas');
-                    ctx = canvas.getContext('2d', { alpha: false });
-
-                    // 显示Canvas
-                    canvas.style.display = 'block';
-
-                    // 启动FPS统计
-                    lastFrameTime = performance.now();
-                    fpsUpdateInterval = setInterval(updateFPS, 1000);
-
-                    // 标记为已连接
-                    setStatus('connected', '已连接');
-
-                    // 设置Canvas事件监听器
-                    setupCanvasEventListeners();
+                    await ensureViewerReady(data.codec);
                     break;
 
                 case 'frame':
-                    // 首次接收到帧数据时初始化Canvas
-                    if (!ctx) {
-                        canvas = document.getElementById('vnc_canvas');
-                        ctx = canvas.getContext('2d', { alpha: false });
-
-                        // 显示Canvas
-                        canvas.style.display = 'block';
-
-                        // 启动FPS统计
-                        lastFrameTime = performance.now();
-                        fpsUpdateInterval = setInterval(updateFPS, 1000);
-
-                        // 标记为已连接
-                        setStatus('connected', '已连接');
-
-                        // 设置Canvas事件监听器
-                        setupCanvasEventListeners();
-
-                        // 初始化 H.264 解码器（如果使用 H.264）
-                        if (data.codec === 'h264' && codecSupport.h264) {
-                            try {
-                                h264Decoder = new H264Decoder();
-                                await h264Decoder.init();
-                                useH264 = true;
-                                console.log('✅ 已启用 H.264 解码');
-                            } catch (e) {
-                                console.error('初始化 H.264 解码器失败:', e);
-                                useH264 = false;
-                            }
-                        }
-                    }
+                    receivedFrame = true;
+                    clearControlHandshakeTimer();
+                    await ensureViewerReady(data.codec);
 
                     // 渲染帧数据
                     try {
                         if (data.codec === 'h264' && useH264) {
                             // H.264 解码路径
                             if (data.h264_data && data.h264_data.length > 0) {
-                                // 解码 base64 数据
-                                const binaryString = atob(data.h264_data);
-                                const h264Data = new Uint8Array(binaryString.length);
-                                for (let i = 0; i < binaryString.length; i++) {
-                                    h264Data[i] = binaryString.charCodeAt(i);
-                                }
-
-                                // 解码 SPS/PPS
-                                const sps = data.sps ? (() => {
-                                    const spsString = atob(data.sps);
-                                    const spsArray = new Uint8Array(spsString.length);
-                                    for (let i = 0; i < spsString.length; i++) {
-                                        spsArray[i] = spsString.charCodeAt(i);
-                                    }
-                                    return spsArray;
-                                })() : null;
-
-                                const pps = data.pps ? (() => {
-                                    const ppsString = atob(data.pps);
-                                    const ppsArray = new Uint8Array(ppsString.length);
-                                    for (let i = 0; i < ppsString.length; i++) {
-                                        ppsArray[i] = ppsString.charCodeAt(i);
-                                    }
-                                    return ppsArray;
-                                })() : null;
+                                const h264Data = decodeBase64Bytes(data.h264_data);
+                                const sps = data.sps ? decodeBase64Bytes(data.sps) : null;
+                                const pps = data.pps ? decodeBase64Bytes(data.pps) : null;
 
                                 console.log('📹 收到 H.264 帧:', {
                                     isKeyFrame: data.is_key_frame,
@@ -860,11 +1143,7 @@
                                     // H.264 解码失败，尝试 JPEG 回退
                                     console.warn('H.264 解码失败，尝试 JPEG 回退:', e);
                                     if (data.data && data.data.length > 0) {
-                                        const binaryString = atob(data.data);
-                                        const imageData = new Uint8Array(binaryString.length);
-                                        for (let i = 0; i < binaryString.length; i++) {
-                                            imageData[i] = binaryString.charCodeAt(i);
-                                        }
+                                        const imageData = decodeBase64Bytes(data.data);
                                         await renderFrame(imageData);
                                     }
                                 }
@@ -872,16 +1151,23 @@
                         } else {
                             // JPEG 解码路径（默认或回退）
                             if (data.data && data.data.length > 0) {
-                                const binaryString = atob(data.data);
-                                const imageData = new Uint8Array(binaryString.length);
-                                for (let i = 0; i < binaryString.length; i++) {
-                                    imageData[i] = binaryString.charCodeAt(i);
-                                }
+                                const imageData = decodeBase64Bytes(data.data);
                                 await renderFrame(imageData);
                             }
                         }
                     } catch (e) {
                         console.error('处理帧数据失败:', e);
+                    }
+                    break;
+
+                case 'session_ended':
+                    sessionEnded = true;
+                    lastDisconnectMessage = data.message || '桌面客户端已断开，会话已结束。';
+                    stopPlaybackState();
+                    setStatus('disconnected', '会话已结束');
+                    showLoading('桌面客户端已断开', lastDisconnectMessage, true);
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.close();
                     }
                     break;
 
