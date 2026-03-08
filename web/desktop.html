@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeskGo - 远程桌面</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>DeskGo - 远程桌面 v2.0</title>
     <style>
         * {
             margin: 0;
@@ -361,14 +364,7 @@
                 if (!this.initialized && this.sps && this.pps) {
                     console.log('🔹 开始配置解码器...');
                     try {
-                        const avcc = this.createAVCC(this.sps, this.pps);
-                        console.log('🔹 AVCC 创建完成，长度:', avcc.length);
-
-                        const codecDesc = {
-                            codec: 'avc1.42E01E', // H.264 Baseline Profile Level 3.1
-                            description: avcc,
-                            optimizeForLatency: true
-                        };
+                        const codecDesc = this.createDecoderConfig(this.sps, this.pps);
                         console.log('🔹 配置参数:', {
                             codec: codecDesc.codec,
                             descriptionSize: codecDesc.description.length
@@ -416,12 +412,8 @@
                     }
                     // 立即尝试配置
                     console.log('🔹 立即配置新解码器...');
-                    const avcc = this.createAVCC(this.sps, this.pps);
-                    await this.decoder.configure({
-                        codec: 'avc1.42E01E',
-                        description: avcc,
-                        optimizeForLatency: true
-                    });
+                    const codecDesc = this.createDecoderConfig(this.sps, this.pps);
+                    await this.decoder.configure(codecDesc);
                     console.log('🔹 重新配置完成，状态:', this.decoder.state);
                     if (this.decoder.state === 'configured') {
                         this.initialized = true;
@@ -431,20 +423,26 @@
                     }
                 }
 
+                if (!this.initialized) {
+                    if (!isKeyFrame) {
+                        console.warn('⏳ 解码器尚未配置，忽略非关键帧');
+                        return;
+                    }
+                    throw new Error('解码器尚未配置，等待有效的 SPS/PPS');
+                }
+
                 // 根据 W3C WebCodecs 规范：
-                // - 如果使用 description（AVCDecoderConfigurationRecord），bitstream 必须是 AVCC 格式
+                // - 如果使用 description（AVCDecoderConfigurationRecord），bitstream 必须保持 AVCC 格式
                 // - AVCC 格式使用长度前缀（不是起始码）
-                // - 因此我们不应该转换为 Annex-B 格式！
 
-                let avccData = data;
-
-                // 检查是否需要过滤 SEI NALU（仅在关键帧时）
+                // 步骤1: 先过滤 SEI NALU（如果需要）
+                let filteredData = data;
                 if (isKeyFrame && data.length > 4) {
                     const firstNaluLength = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
                     const maxNaluLength = data.length - 4;
 
                     if (firstNaluLength > 0 && firstNaluLength <= maxNaluLength) {
-                        // 确认是 AVCC 格式，检查第一个 NALU 类型
+                        // 检查第一个 NALU 类型
                         const firstNaluType = data[4] & 0x1F;
 
                         // 如果第一个 NALU 是 SEI（类型6），需要过滤掉
@@ -452,7 +450,6 @@
                             console.log('🔍 检测到 AVCC 格式的 SEI NALU，过滤...');
                             const filteredNalus = [];
                             let pos = 0;
-                            let skippedSEI = false;
 
                             while (pos < data.length) {
                                 if (pos + 4 > data.length) break;
@@ -469,44 +466,39 @@
                                 if (naluType === 6 || naluType === 9) {
                                     console.log(`🔍 跳过 ${naluType === 6 ? 'SEI' : 'AUD'} NALU（${naluLength}字节）`);
                                     pos += naluLength;
-                                    skippedSEI = true;
                                     continue;
                                 }
 
-                                // 写入长度前缀（大端序）
-                                filteredNalus.push(
-                                    (naluLength >>> 24) & 0xFF,
-                                    (naluLength >>> 16) & 0xFF,
-                                    (naluLength >>> 8) & 0xFF,
-                                    naluLength & 0xFF
-                                );
+                                // 保留这个 NALU
+                                filteredNalus.push(data.slice(pos - 4, pos + naluLength));
+                                pos += naluLength;
+                            }
 
-                                // 写入 NALU 数据
-                                for (let i = 0; i < naluLength; i++) {
-                                    filteredNalus.push(data[pos++]);
+                            if (filteredNalus.length > 0) {
+                                const totalLength = filteredNalus.reduce((sum, nalu) => sum + nalu.length, 0);
+                                const result = new Uint8Array(totalLength);
+                                let offset = 0;
+                                for (const nalu of filteredNalus) {
+                                    result.set(nalu, offset);
+                                    offset += nalu.length;
                                 }
+                                console.log(`✅ SEI 过滤完成: ${data.length} → ${result.length} 字节`);
+                                filteredData = result;
                             }
-
-                            if (skippedSEI && filteredNalus.length > 0) {
-                                avccData = new Uint8Array(filteredNalus);
-                                console.log(`✅ SEI 过滤完成: ${data.length} → ${avccData.length} 字节（AVCC格式）`);
-                            }
-                        } else {
-                            console.log(`🔍 AVCC 格式，首 NALU 类型=${firstNaluType}，无需过滤`);
                         }
                     }
                 }
 
-                console.log('🔹 使用 AVCC 格式数据（符合 W3C 规范）:', {
+                console.log('🔹 使用 AVCC 格式数据（用于 decode）:', {
                     type: isKeyFrame ? 'key' : 'delta',
-                    dataLength: avccData.length,
-                    dataPrefix: Array.from(avccData.slice(0, 8)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')
+                    dataLength: filteredData.length,
+                    dataPrefix: Array.from(filteredData.slice(0, 12)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')
                 });
 
                 const chunk = new EncodedVideoChunk({
                     type: isKeyFrame ? 'key' : 'delta',
                     timestamp: performance.now(),
-                    data: avccData  // 使用 AVCC 格式，不是 Annex-B
+                    data: filteredData
                 });
 
                 console.log('🔹 EncodedVideoChunk 创建成功，开始解码...');
@@ -518,7 +510,7 @@
                     console.error('❌ 解码 H.264 帧失败:', e);
                     console.error('   解码器状态:', this.decoder ? this.decoder.state : 'no decoder');
                     console.error('   帧类型:', isKeyFrame ? 'key' : 'delta');
-                    console.error('   数据长度:', annexBData.length);
+                    console.error('   数据长度:', filteredData.length);
                     throw e;
                 }
             }
@@ -551,89 +543,65 @@
                 console.error('H.264 解码器错误:', error);
             }
 
-            // 创建 AVCC 格式（用于 VideoDecoder.configure）
-            createAVCC(sps, pps) {
-                console.log('🔍 createAVCC - SPS 长度:', sps.length, 'PPS 长度:', pps.length);
-                console.log('🔍 createAVCC - SPS 前16字节:', Array.from(sps.slice(0, 16)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-                console.log('🔍 createAVCC - PPS 前8字节:', Array.from(pps.slice(0, 8)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+            createDecoderConfig(sps, pps) {
+                console.log('🔍 createDecoderConfig - SPS 长度:', sps.length, 'PPS 长度:', pps.length);
 
-                // 直接使用VideoToolbox输出的完整数据（包含第1个字节）
-                // VideoToolbox可能已经输出正确格式，不额外处理
-                let spsData = sps;
-                let ppsData = pps;
-
-                // 检查并移除 Annex-B 起始码 (00 00 00 01 或 00 00 01)
-                if (spsData.length >= 4 && spsData[0] === 0x00 && spsData[1] === 0x00 &&
-                    spsData[2] === 0x00 && spsData[3] === 0x01) {
-                    console.log('🔍 SPS 包含 4字节起始码，移除');
-                    spsData = spsData.slice(4);
-                } else if (spsData.length >= 3 && spsData[0] === 0x00 && spsData[1] === 0x00 &&
-                           spsData[2] === 0x01) {
-                    console.log('🔍 SPS 包含 3字节起始码，移除');
-                    spsData = spsData.slice(3);
+                const spsNalu = this.normalizeParameterSet(sps, 7, 'SPS');
+                const ppsNalu = this.normalizeParameterSet(pps, 8, 'PPS');
+                if (spsNalu.length < 4) {
+                    throw new Error('SPS 数据太短: ' + spsNalu.length);
                 }
 
-                if (ppsData.length >= 4 && ppsData[0] === 0x00 && ppsData[1] === 0x00 &&
-                    ppsData[2] === 0x00 && ppsData[3] === 0x01) {
-                    console.log('🔍 PPS 包含 4字节起始码，移除');
-                    ppsData = ppsData.slice(4);
-                } else if (ppsData.length >= 3 && ppsData[0] === 0x00 && ppsData[1] === 0x00 &&
-                           ppsData[2] === 0x01) {
-                    console.log('🔍 PPS 包含 3字节起始码，移除');
-                    ppsData = ppsData.slice(3);
+                console.log('🔍 createDecoderConfig - SPS 前16字节:', Array.from(spsNalu.slice(0, 16)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+                console.log('🔍 createDecoderConfig - PPS 前8字节:', Array.from(ppsNalu.slice(0, 8)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+
+                const profile = spsNalu[1];
+                const compatibility = spsNalu[2];
+                const level = spsNalu[3];
+                const codec = `avc1.${[profile, compatibility, level].map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase()}`;
+
+                return {
+                    codec,
+                    description: this.buildAVCC(profile, compatibility, level, spsNalu, ppsNalu),
+                    optimizeForLatency: true
+                };
+            }
+
+            normalizeParameterSet(data, expectedType, label) {
+                let nalu = data;
+
+                if (nalu.length >= 4 && nalu[0] === 0x00 && nalu[1] === 0x00 &&
+                    nalu[2] === 0x00 && nalu[3] === 0x01) {
+                    console.log(`🔍 ${label} 包含 4字节起始码，移除`);
+                    nalu = nalu.slice(4);
+                } else if (nalu.length >= 3 && nalu[0] === 0x00 && nalu[1] === 0x00 &&
+                           nalu[2] === 0x01) {
+                    console.log(`🔍 ${label} 包含 3字节起始码，移除`);
+                    nalu = nalu.slice(3);
                 }
 
-                // 检查长度
-                if (spsData.length < 4) {
-                    throw new Error('SPS 数据太短: ' + spsData.length);
+                if (nalu.length === 0) {
+                    throw new Error(`${label} 数据为空`);
                 }
 
-                // 检查第一个字节是否是标准SPS NALU header (0x67)
-                // VideoToolbox输出的0x27不是标准格式，需要特殊处理
-                if (spsData[0] === 0x67) {
-                    // 标准格式：[0x67] [profile] [compat] [level] [data...]
-                    console.log('🔍 SPS 是标准格式 (0x67)');
-                    const profile = spsData[1];
-                    const compatibility = spsData[2];
-                    const level = spsData[3];
-                    const spsRbsp = spsData.slice(1); // 移除NALU header
-                    const ppsRbsp = ppsData.slice(1);
-
-                    return this.buildAVCC(profile, compatibility, level, spsRbsp, ppsRbsp);
-                } else if (spsData[0] === 0x27) {
-                    // VideoToolbox特殊格式：[0x27] [profile] [compat] [level] [data...]
-                    // 第一个字节可能是某种标记，直接使用后续字节作为AVCC参数
-                    console.log('🔍 SPS 是VideoToolbox特殊格式 (0x27)');
-                    const profile = spsData[1];
-                    const compatibility = spsData[2];
-                    const level = spsData[3];
-                    const spsRbsp = spsData.slice(1); // 保留从profile开始的完整数据
-                    const ppsRbsp = ppsData.slice(1);
-
-                    return this.buildAVCC(profile, compatibility, level, spsRbsp, ppsRbsp);
-                } else {
-                    // 未知格式，尝试当作RBSP处理
-                    console.warn('⚠️ SPS 格式未知，尝试当作RBSP处理');
-                    const profile = spsData[1] || 0x64;
-                    const compatibility = spsData[2] || 0x00;
-                    const level = spsData[3] || 0x32;
-                    const spsRbsp = spsData;
-                    const ppsRbsp = ppsData;
-
-                    return this.buildAVCC(profile, compatibility, level, spsRbsp, ppsRbsp);
+                const naluType = nalu[0] & 0x1F;
+                if (naluType !== expectedType) {
+                    throw new Error(`${label} NALU 类型错误: 期望=${expectedType}, 实际=${naluType}`);
                 }
+
+                return nalu;
             }
 
             // 构建AVCC字节数组
-            buildAVCC(profile, compatibility, level, spsRbsp, ppsRbsp) {
+            buildAVCC(profile, compatibility, level, spsNalu, ppsNalu) {
                 console.log(`🔍 构建AVCC: Profile=0x${profile.toString(16)}, Level=0x${level.toString(16)}`);
-                console.log(`🔍 SPS RBSP 长度: ${spsRbsp.length}, PPS RBSP 长度: ${ppsRbsp.length}`);
+                console.log(`🔍 SPS NALU 长度: ${spsNalu.length}, PPS NALU 长度: ${ppsNalu.length}`);
 
                 const avcc = new Uint8Array(
                     6 + // 配置记录
-                    2 + spsRbsp.length + // SPS
+                    2 + spsNalu.length + // SPS
                     1 + // PPS 数量
-                    2 + ppsRbsp.length    // PPS
+                    2 + ppsNalu.length    // PPS
                 );
 
                 let offset = 0;
@@ -647,16 +615,16 @@
                 avcc[offset++] = 0xE1;         // numOfSequenceParameterSets (1个SPS)
 
                 // [SPS]
-                avcc[offset++] = (spsRbsp.length >> 8) & 0xFF; // SPS 长度
-                avcc[offset++] = spsRbsp.length & 0xFF;
-                avcc.set(spsRbsp, offset);
-                offset += spsRbsp.length;
+                avcc[offset++] = (spsNalu.length >> 8) & 0xFF; // SPS 长度
+                avcc[offset++] = spsNalu.length & 0xFF;
+                avcc.set(spsNalu, offset);
+                offset += spsNalu.length;
 
                 // [PPS]
                 avcc[offset++] = 1;                            // numOfPictureParameterSets
-                avcc[offset++] = (ppsRbsp.length >> 8) & 0xFF; // PPS 长度
-                avcc[offset++] = ppsRbsp.length & 0xFF;
-                avcc.set(ppsRbsp, offset);
+                avcc[offset++] = (ppsNalu.length >> 8) & 0xFF; // PPS 长度
+                avcc[offset++] = ppsNalu.length & 0xFF;
+                avcc.set(ppsNalu, offset);
 
                 console.log('🔍 AVCC 总长度:', avcc.length);
                 console.log('🔍 AVCC 前20字节:', Array.from(avcc.slice(0, 20)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
@@ -750,8 +718,12 @@
             };
 
             ws.onmessage = async (event) => {
-                const data = JSON.parse(event.data);
-                handleMessage(data);
+                try {
+                    const data = JSON.parse(event.data);
+                    await handleMessage(data);
+                } catch (e) {
+                    console.error('处理消息失败:', e, '原始数据:', event.data);
+                }
             };
 
             ws.onerror = (error) => {
