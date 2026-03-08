@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DeskGo - 远程桌面</title>
-    <link rel="stylesheet" href="/lib/rfb.css">
     <style>
         * {
             margin: 0;
@@ -31,6 +30,9 @@
         .header h1 {
             font-size: 1.2em;
             color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .status {
@@ -44,6 +46,7 @@
             height: 10px;
             border-radius: 50%;
             background: #ff4444;
+            transition: background 0.3s;
         }
 
         .status-dot.connected {
@@ -78,12 +81,14 @@
             align-items: center;
             justify-content: center;
             position: relative;
+            overflow: hidden;
         }
 
         #vnc_canvas {
             max-width: 100%;
             max-height: 100%;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            image-rendering: pixelated;
         }
 
         .loading {
@@ -106,38 +111,58 @@
             100% { transform: rotate(360deg); }
         }
 
-        .toolbar {
+        .info-bar {
             background: #2d2d2d;
-            padding: 10px 20px;
+            padding: 8px 20px;
+            font-size: 0.85em;
+            color: #888;
             display: flex;
-            gap: 10px;
+            gap: 20px;
+            justify-content: center;
             border-top: 1px solid #3d3d3d;
         }
 
-        .toolbar button {
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .info-value {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .quality-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .quality-bar {
+            width: 50px;
+            height: 4px;
             background: #3d3d3d;
-            color: #fff;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
+            border-radius: 2px;
+            overflow: hidden;
         }
 
-        .toolbar button:hover {
-            background: #4d4d4d;
+        .quality-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ffaa44, #44ff44);
+            transition: width 0.3s;
         }
 
-        .toolbar button:active {
-            background: #5d5d5d;
-        }
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1em;
+            }
 
-        .info-bar {
-            background: #2d2d2d;
-            padding: 5px 20px;
-            font-size: 0.8em;
-            color: #888;
-            text-align: center;
+            .info-bar {
+                flex-wrap: wrap;
+                font-size: 0.75em;
+            }
         }
     </style>
 </head>
@@ -155,24 +180,45 @@
             <div class="loading" id="loading">
                 <div class="loading-spinner"></div>
                 <p>正在连接到远程桌面...</p>
+                <p style="font-size: 0.9em; margin-top: 10px; color: #666;">会话ID: <span id="sessionIdDisplay"></span></p>
             </div>
             <canvas id="vnc_canvas" style="display: none;"></canvas>
         </div>
 
-        <div class="info-bar" id="infoBar">
-            会话ID: <span id="sessionId">{{ .sessionID }}</span> |
-            分辨率: <span id="resolution">-</span> |
-            延迟: <span id="latency">-</span>
+        <div class="info-bar">
+            <div class="info-item">
+                分辨率: <span class="info-value" id="resolution">-</span>
+            </div>
+            <div class="info-item">
+                帧率: <span class="info-value" id="fps">-</span>
+            </div>
+            <div class="info-item">
+                延迟: <span class="info-value" id="latency">-</span>
+            </div>
+            <div class="info-item">
+                会话: <span class="info-value" id="sessionId">-</span>
+            </div>
+            <div class="quality-indicator">
+                质量:
+                <div class="quality-bar">
+                    <div class="quality-fill" id="qualityFill" style="width: 80%"></div>
+                </div>
+                <span class="info-value" id="qualityText">良好</span>
+            </div>
         </div>
     </div>
 
-    <script src="/lib/rfb.js"></script>
     <script>
         const sessionId = '{{ .sessionID }}';
         const wsURL = `ws://${window.location.host}/api/desktop/${sessionId}?type=web&user_id=web-${Date.now()}`;
 
         let ws = null;
         let isConnected = false;
+        let canvas = null;
+        let ctx = null;
+        let frameCount = 0;
+        let lastFrameTime = performance.now();
+        let fpsUpdateInterval = null;
 
         // 连接状态管理
         function setStatus(status, text) {
@@ -185,21 +231,85 @@
             if (status === 'connected') {
                 isConnected = true;
                 document.getElementById('loading').style.display = 'none';
-                document.getElementById('vnc_canvas').style.display = 'block';
+                canvas.style.display = 'block';
+            }
+        }
+
+        // 更新帧率统计
+        function updateFPS() {
+            const now = performance.now();
+            const elapsed = now - lastFrameTime;
+            const fps = Math.round((frameCount * 1000) / elapsed);
+
+            document.getElementById('fps').textContent = fps + ' FPS';
+
+            // 根据帧率更新质量指示
+            const qualityFill = document.getElementById('qualityFill');
+            const qualityText = document.getElementById('qualityText');
+
+            if (fps >= 25) {
+                qualityFill.style.width = '100%';
+                qualityText.textContent = '优秀';
+            } else if (fps >= 15) {
+                qualityFill.style.width = '70%';
+                qualityText.textContent = '良好';
+            } else if (fps >= 10) {
+                qualityFill.style.width = '40%';
+                qualityText.textContent = '一般';
+            } else {
+                qualityFill.style.width = '20%';
+                qualityText.textContent = '较差';
+            }
+
+            // 重置计数
+            frameCount = 0;
+            lastFrameTime = now;
+        }
+
+        // 渲染帧到Canvas
+        async function renderFrame(imageData) {
+            if (!ctx) return;
+
+            try {
+                // 解码PNG图像
+                const bitmap = await createImageBitmap(imageData);
+
+                // 调整Canvas大小
+                if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
+                    canvas.width = bitmap.width;
+                    canvas.height = bitmap.height;
+                    document.getElementById('resolution').textContent =
+                        `${bitmap.width}x${bitmap.height}`;
+                }
+
+                // 绘制图像
+                ctx.drawImage(bitmap, 0, 0);
+
+                // 更新帧计数
+                frameCount++;
+
+                // 清理bitmap
+                bitmap.close();
+
+            } catch (error) {
+                console.error('渲染帧失败:', error);
             }
         }
 
         // WebSocket连接
         function connect() {
             setStatus('connecting', '连接中...');
+            document.getElementById('sessionIdDisplay').textContent = sessionId;
+            document.getElementById('sessionId').textContent = sessionId.substring(0, 8);
 
             ws = new WebSocket(wsURL);
 
             ws.onopen = () => {
                 console.log('WebSocket已连接');
+                setStatus('connecting', '等待客户端...');
             };
 
-            ws.onmessage = (event) => {
+            ws.onmessage = async (event) => {
                 const data = JSON.parse(event.data);
                 handleMessage(data);
             };
@@ -214,6 +324,11 @@
                 setStatus('disconnected', '连接已断开');
                 isConnected = false;
 
+                // 停止FPS更新
+                if (fpsUpdateInterval) {
+                    clearInterval(fpsUpdateInterval);
+                }
+
                 // 5秒后重连
                 setTimeout(() => {
                     if (!isConnected) {
@@ -224,28 +339,31 @@
         }
 
         // 处理消息
-        function handleMessage(data) {
+        async function handleMessage(data) {
             switch (data.type) {
                 case 'init':
                     console.log('初始化完成');
+                    // 初始化Canvas
+                    canvas = document.getElementById('vnc_canvas');
+                    ctx = canvas.getContext('2d', { alpha: false });
+
+                    // 启动FPS统计
+                    lastFrameTime = performance.now();
+                    fpsUpdateInterval = setInterval(updateFPS, 1000);
                     break;
 
                 case 'frame':
-                    // 渲染帧数据到Canvas
-                    renderFrame(data.data);
+                    // 渲染帧数据
+                    if (data.data && data.data.length > 0) {
+                        const imageData = new Uint8Array(data.data);
+                        await renderFrame(imageData);
+                    }
                     break;
 
                 case 'input':
                     // 输入事件确认
                     break;
             }
-        }
-
-        // 渲染帧
-        function renderFrame(data) {
-            // TODO: 实现帧渲染逻辑
-            // 这里需要根据数据格式解码并绘制到Canvas
-            setStatus('connected', '已连接');
         }
 
         // 发送输入事件
@@ -277,10 +395,12 @@
         });
 
         // 鼠标事件
-        const canvas = document.getElementById('vnc_canvas');
         let mouseButtonMask = 0;
 
+        canvas = document.getElementById('vnc_canvas');
+
         canvas.addEventListener('mousedown', (e) => {
+            e.preventDefault();
             mouseButtonMask |= (1 << e.button);
             sendInput('mouse', {
                 mouse_x: e.offsetX,
@@ -290,6 +410,7 @@
         });
 
         canvas.addEventListener('mouseup', (e) => {
+            e.preventDefault();
             mouseButtonMask &= ~(1 << e.button);
             sendInput('mouse', {
                 mouse_x: e.offsetX,
@@ -299,6 +420,7 @@
         });
 
         canvas.addEventListener('mousemove', (e) => {
+            e.preventDefault();
             sendInput('mouse', {
                 mouse_x: e.offsetX,
                 mouse_y: e.offsetY,
@@ -306,8 +428,81 @@
             });
         });
 
+        // 防止右键菜单
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+
+        // 滚轮事件
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            // VNC滚轮掩码：向上=8，向下=16
+            let scrollMask = 0;
+            if (e.deltaY < 0) {
+                scrollMask = 8;
+            } else if (e.deltaY > 0) {
+                scrollMask = 16;
+            }
+
+            sendInput('mouse', {
+                mouse_x: e.offsetX,
+                mouse_y: e.offsetY,
+                mouse_mask: mouseButtonMask | scrollMask
+            });
+
+            // 发送滚轮复位
+            setTimeout(() => {
+                sendInput('mouse', {
+                    mouse_x: e.offsetX,
+                    mouse_y: e.offsetY,
+                    mouse_mask: mouseButtonMask
+                });
+            }, 100);
+        });
+
+        // 延迟统计
+        function measureLatency() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+            const start = performance.now();
+            ws.send(JSON.stringify({
+                type: 'ping',
+                timestamp: start
+            }));
+
+            // 记录发送时间用于延迟计算
+            ws.lastPing = start;
+        }
+
+        // 接收pong消息计算延迟
+        ws?.addEventListener('message', (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'pong') {
+                    const latency = Math.round(performance.now() - data.timestamp);
+                    document.getElementById('latency').textContent = latency + 'ms';
+                }
+            } catch (e) {
+                // 忽略非JSON消息
+            }
+        });
+
+        // 定期测量延迟
+        setInterval(measureLatency, 2000);
+
         // 启动连接
         connect();
+
+        // 页面可见性变化时优化
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('页面隐藏，暂停渲染优化');
+            } else {
+                console.log('页面可见，恢复渲染');
+                lastFrameTime = performance.now();
+                frameCount = 0;
+            }
+        });
     </script>
 </body>
 </html>
