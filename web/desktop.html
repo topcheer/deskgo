@@ -38,7 +38,23 @@
         .status {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
+        }
+
+        .control-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+
+        .control-toggle input {
+            cursor: pointer;
+        }
+
+        .control-toggle label {
+            cursor: pointer;
+            user-select: none;
         }
 
         .status-dot {
@@ -170,6 +186,10 @@
     <div class="header">
         <h1>🖥️ DeskGo 远程桌面</h1>
         <div class="status">
+            <div class="control-toggle">
+                <input type="checkbox" id="controlToggle" checked>
+                <label for="controlToggle">启用控制</label>
+            </div>
             <div class="status-dot" id="statusDot"></div>
             <span class="status-text" id="statusText">连接中...</span>
         </div>
@@ -210,7 +230,11 @@
 
     <script>
         const sessionId = '{{ .sessionID }}';
-        const wsURL = `ws://${window.location.host}/api/desktop/${sessionId}?type=web&user_id=web-${Date.now()}`;
+
+        // 根据页面协议自动选择 WebSocket 协议
+        // HTTPS -> WSS, HTTP -> WS
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsURL = `${wsProtocol}//${window.location.host}/api/desktop/${sessionId}?type=web&user_id=web-${Date.now()}`;
 
         let ws = null;
         let isConnected = false;
@@ -219,6 +243,29 @@
         let frameCount = 0;
         let lastFrameTime = performance.now();
         let fpsUpdateInterval = null;
+
+        // H.264 解码器
+        let h264Decoder = null;
+        let useH264 = false;
+        let sps = null;
+        let pps = null;
+
+        // 检测编解码器支持
+        function detectCodecSupport() {
+            return {
+                h264: 'VideoDecoder' in window && 'VideoEncoder' in window,
+                jpeg: true
+            };
+        }
+
+        const codecSupport = detectCodecSupport();
+        console.log('=== 编解码器支持检测 ===');
+        console.log('VideoDecoder 可用:', 'VideoDecoder' in window);
+        console.log('VideoEncoder 可用:', 'VideoEncoder' in window);
+        console.log('H.264 支持:', codecSupport.h264);
+        console.log('JPEG 支持:', codecSupport.jpeg);
+        console.log('完整对象:', codecSupport);
+        console.log('======================');
 
         // 连接状态管理
         function setStatus(status, text) {
@@ -231,7 +278,7 @@
             if (status === 'connected') {
                 isConnected = true;
                 document.getElementById('loading').style.display = 'none';
-                canvas.style.display = 'block';
+                // Canvas将在init消息中初始化和显示
             }
         }
 
@@ -266,13 +313,379 @@
             lastFrameTime = now;
         }
 
+        // H264Decoder H.264 解码器类
+        class H264Decoder {
+            constructor() {
+                this.decoder = null;
+                this.sps = null;
+                this.pps = null;
+                this.initialized = false;
+            }
+
+            async init() {
+                if (!codecSupport.h264) {
+                    throw new Error('VideoDecoder 不支持');
+                }
+
+                this.decoder = new VideoDecoder({
+                    output: (frame) => this.onFrameDecoded(frame),
+                    error: (e) => this.onError(e)
+                });
+
+                console.log('H.264 解码器已创建');
+            }
+
+            async decode(data, isKeyFrame, sps, pps) {
+                console.log('🔹 decode() 被调用:', {
+                    dataLength: data.length,
+                    isKeyFrame,
+                    hasSps: !!sps,
+                    hasPps: !!pps,
+                    spsLength: sps ? sps.length : 0,
+                    ppsLength: pps ? pps.length : 0,
+                    initialized: this.initialized,
+                    decoderState: this.decoder ? this.decoder.state : 'no decoder'
+                });
+
+                // 更新 SPS/PPS
+                if (sps && sps.length > 0) {
+                    this.sps = new Uint8Array(sps);
+                    console.log('📹 SPS 已更新，长度:', sps.length);
+                }
+                if (pps && pps.length > 0) {
+                    this.pps = new Uint8Array(pps);
+                    console.log('📹 PPS 已更新，长度:', pps.length);
+                }
+
+                // 配置解码器（使用 SPS/PPS）
+                if (!this.initialized && this.sps && this.pps) {
+                    console.log('🔹 开始配置解码器...');
+                    try {
+                        const avcc = this.createAVCC(this.sps, this.pps);
+                        console.log('🔹 AVCC 创建完成，长度:', avcc.length);
+
+                        const codecDesc = {
+                            codec: 'avc1.42E01E', // H.264 Baseline Profile Level 3.1
+                            description: avcc,
+                            optimizeForLatency: true
+                        };
+                        console.log('🔹 配置参数:', {
+                            codec: codecDesc.codec,
+                            descriptionSize: codecDesc.description.length
+                        });
+
+                        await this.decoder.configure(codecDesc);
+                        console.log('🔹 configure() 调用完成，状态:', this.decoder.state);
+
+                        if (this.decoder.state === 'configured') {
+                            this.initialized = true;
+                            console.log('✅ H.264 解码器已配置');
+                        } else {
+                            console.warn('⚠️ 解码器配置失败，状态:', this.decoder.state);
+                            // 重新创建解码器
+                            this.decoder = new VideoDecoder({
+                                output: (frame) => this.onFrameDecoded(frame),
+                                error: (e) => this.onError(e)
+                            });
+                        }
+                    } catch (e) {
+                        console.error('❌ 配置 H.264 解码器失败，重新创建:', e);
+                        console.error('   错误堆栈:', e.stack);
+                        // 重新创建解码器
+                        this.decoder = new VideoDecoder({
+                            output: (frame) => this.onFrameDecoded(frame),
+                            error: (e) => this.onError(e)
+                        });
+                        this.initialized = false;
+                        // 不再抛出异常，尝试解码
+                    }
+                }
+
+                // 如果解码器关闭，重新创建
+                if (!this.decoder || this.decoder.state === 'closed') {
+                    console.log('🔄 解码器已关闭，重新创建...');
+                    this.decoder = new VideoDecoder({
+                        output: (frame) => this.onFrameDecoded(frame),
+                        error: (e) => this.onError(e)
+                    });
+                    this.initialized = false;
+                    // 重置后需要等待 SPS/PPS 才能配置
+                    if (!this.sps || !this.pps) {
+                        console.warn('⚠️ 需要等待 SPS/PPS 数据');
+                        throw new Error('等待 SPS/PPS 数据...');
+                    }
+                    // 立即尝试配置
+                    console.log('🔹 立即配置新解码器...');
+                    const avcc = this.createAVCC(this.sps, this.pps);
+                    await this.decoder.configure({
+                        codec: 'avc1.42E01E',
+                        description: avcc,
+                        optimizeForLatency: true
+                    });
+                    console.log('🔹 重新配置完成，状态:', this.decoder.state);
+                    if (this.decoder.state === 'configured') {
+                        this.initialized = true;
+                        console.log('✅ 解码器重新配置成功');
+                    } else {
+                        throw new Error('解码器重新配置失败，状态: ' + this.decoder.state);
+                    }
+                }
+
+                // 根据 W3C WebCodecs 规范：
+                // - 如果使用 description（AVCDecoderConfigurationRecord），bitstream 必须是 AVCC 格式
+                // - AVCC 格式使用长度前缀（不是起始码）
+                // - 因此我们不应该转换为 Annex-B 格式！
+
+                let avccData = data;
+
+                // 检查是否需要过滤 SEI NALU（仅在关键帧时）
+                if (isKeyFrame && data.length > 4) {
+                    const firstNaluLength = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
+                    const maxNaluLength = data.length - 4;
+
+                    if (firstNaluLength > 0 && firstNaluLength <= maxNaluLength) {
+                        // 确认是 AVCC 格式，检查第一个 NALU 类型
+                        const firstNaluType = data[4] & 0x1F;
+
+                        // 如果第一个 NALU 是 SEI（类型6），需要过滤掉
+                        if (firstNaluType === 6) {
+                            console.log('🔍 检测到 AVCC 格式的 SEI NALU，过滤...');
+                            const filteredNalus = [];
+                            let pos = 0;
+                            let skippedSEI = false;
+
+                            while (pos < data.length) {
+                                if (pos + 4 > data.length) break;
+
+                                const naluLength = (data[pos] << 24) | (data[pos + 1] << 16) |
+                                                  (data[pos + 2] << 8) | data[pos + 3];
+                                pos += 4;
+
+                                if (naluLength <= 0 || pos + naluLength > data.length) break;
+
+                                const naluType = data[pos] & 0x1F;
+
+                                // 跳过 SEI（类型6）和 AUD（类型9）
+                                if (naluType === 6 || naluType === 9) {
+                                    console.log(`🔍 跳过 ${naluType === 6 ? 'SEI' : 'AUD'} NALU（${naluLength}字节）`);
+                                    pos += naluLength;
+                                    skippedSEI = true;
+                                    continue;
+                                }
+
+                                // 写入长度前缀（大端序）
+                                filteredNalus.push(
+                                    (naluLength >>> 24) & 0xFF,
+                                    (naluLength >>> 16) & 0xFF,
+                                    (naluLength >>> 8) & 0xFF,
+                                    naluLength & 0xFF
+                                );
+
+                                // 写入 NALU 数据
+                                for (let i = 0; i < naluLength; i++) {
+                                    filteredNalus.push(data[pos++]);
+                                }
+                            }
+
+                            if (skippedSEI && filteredNalus.length > 0) {
+                                avccData = new Uint8Array(filteredNalus);
+                                console.log(`✅ SEI 过滤完成: ${data.length} → ${avccData.length} 字节（AVCC格式）`);
+                            }
+                        } else {
+                            console.log(`🔍 AVCC 格式，首 NALU 类型=${firstNaluType}，无需过滤`);
+                        }
+                    }
+                }
+
+                console.log('🔹 使用 AVCC 格式数据（符合 W3C 规范）:', {
+                    type: isKeyFrame ? 'key' : 'delta',
+                    dataLength: avccData.length,
+                    dataPrefix: Array.from(avccData.slice(0, 8)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')
+                });
+
+                const chunk = new EncodedVideoChunk({
+                    type: isKeyFrame ? 'key' : 'delta',
+                    timestamp: performance.now(),
+                    data: avccData  // 使用 AVCC 格式，不是 Annex-B
+                });
+
+                console.log('🔹 EncodedVideoChunk 创建成功，开始解码...');
+
+                try {
+                    await this.decoder.decode(chunk);
+                    console.log('✅ decode() 调用成功');
+                } catch (e) {
+                    console.error('❌ 解码 H.264 帧失败:', e);
+                    console.error('   解码器状态:', this.decoder ? this.decoder.state : 'no decoder');
+                    console.error('   帧类型:', isKeyFrame ? 'key' : 'delta');
+                    console.error('   数据长度:', annexBData.length);
+                    throw e;
+                }
+            }
+
+            onFrameDecoded(frame) {
+                if (!ctx) {
+                    frame.close();
+                    return;
+                }
+
+                // 调整 Canvas 大小
+                if (canvas.width !== frame.displayWidth || canvas.height !== frame.displayHeight) {
+                    canvas.width = frame.displayWidth;
+                    canvas.height = frame.displayHeight;
+                    document.getElementById('resolution').textContent =
+                        `${frame.displayWidth}x${frame.displayHeight}`;
+                }
+
+                // 绘制帧
+                ctx.drawImage(frame, 0, 0);
+
+                // 更新帧计数
+                frameCount++;
+
+                // 清理帧
+                frame.close();
+            }
+
+            onError(error) {
+                console.error('H.264 解码器错误:', error);
+            }
+
+            // 创建 AVCC 格式（用于 VideoDecoder.configure）
+            createAVCC(sps, pps) {
+                console.log('🔍 createAVCC - SPS 长度:', sps.length, 'PPS 长度:', pps.length);
+                console.log('🔍 createAVCC - SPS 前16字节:', Array.from(sps.slice(0, 16)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+                console.log('🔍 createAVCC - PPS 前8字节:', Array.from(pps.slice(0, 8)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+
+                // 直接使用VideoToolbox输出的完整数据（包含第1个字节）
+                // VideoToolbox可能已经输出正确格式，不额外处理
+                let spsData = sps;
+                let ppsData = pps;
+
+                // 检查并移除 Annex-B 起始码 (00 00 00 01 或 00 00 01)
+                if (spsData.length >= 4 && spsData[0] === 0x00 && spsData[1] === 0x00 &&
+                    spsData[2] === 0x00 && spsData[3] === 0x01) {
+                    console.log('🔍 SPS 包含 4字节起始码，移除');
+                    spsData = spsData.slice(4);
+                } else if (spsData.length >= 3 && spsData[0] === 0x00 && spsData[1] === 0x00 &&
+                           spsData[2] === 0x01) {
+                    console.log('🔍 SPS 包含 3字节起始码，移除');
+                    spsData = spsData.slice(3);
+                }
+
+                if (ppsData.length >= 4 && ppsData[0] === 0x00 && ppsData[1] === 0x00 &&
+                    ppsData[2] === 0x00 && ppsData[3] === 0x01) {
+                    console.log('🔍 PPS 包含 4字节起始码，移除');
+                    ppsData = ppsData.slice(4);
+                } else if (ppsData.length >= 3 && ppsData[0] === 0x00 && ppsData[1] === 0x00 &&
+                           ppsData[2] === 0x01) {
+                    console.log('🔍 PPS 包含 3字节起始码，移除');
+                    ppsData = ppsData.slice(3);
+                }
+
+                // 检查长度
+                if (spsData.length < 4) {
+                    throw new Error('SPS 数据太短: ' + spsData.length);
+                }
+
+                // 检查第一个字节是否是标准SPS NALU header (0x67)
+                // VideoToolbox输出的0x27不是标准格式，需要特殊处理
+                if (spsData[0] === 0x67) {
+                    // 标准格式：[0x67] [profile] [compat] [level] [data...]
+                    console.log('🔍 SPS 是标准格式 (0x67)');
+                    const profile = spsData[1];
+                    const compatibility = spsData[2];
+                    const level = spsData[3];
+                    const spsRbsp = spsData.slice(1); // 移除NALU header
+                    const ppsRbsp = ppsData.slice(1);
+
+                    return this.buildAVCC(profile, compatibility, level, spsRbsp, ppsRbsp);
+                } else if (spsData[0] === 0x27) {
+                    // VideoToolbox特殊格式：[0x27] [profile] [compat] [level] [data...]
+                    // 第一个字节可能是某种标记，直接使用后续字节作为AVCC参数
+                    console.log('🔍 SPS 是VideoToolbox特殊格式 (0x27)');
+                    const profile = spsData[1];
+                    const compatibility = spsData[2];
+                    const level = spsData[3];
+                    const spsRbsp = spsData.slice(1); // 保留从profile开始的完整数据
+                    const ppsRbsp = ppsData.slice(1);
+
+                    return this.buildAVCC(profile, compatibility, level, spsRbsp, ppsRbsp);
+                } else {
+                    // 未知格式，尝试当作RBSP处理
+                    console.warn('⚠️ SPS 格式未知，尝试当作RBSP处理');
+                    const profile = spsData[1] || 0x64;
+                    const compatibility = spsData[2] || 0x00;
+                    const level = spsData[3] || 0x32;
+                    const spsRbsp = spsData;
+                    const ppsRbsp = ppsData;
+
+                    return this.buildAVCC(profile, compatibility, level, spsRbsp, ppsRbsp);
+                }
+            }
+
+            // 构建AVCC字节数组
+            buildAVCC(profile, compatibility, level, spsRbsp, ppsRbsp) {
+                console.log(`🔍 构建AVCC: Profile=0x${profile.toString(16)}, Level=0x${level.toString(16)}`);
+                console.log(`🔍 SPS RBSP 长度: ${spsRbsp.length}, PPS RBSP 长度: ${ppsRbsp.length}`);
+
+                const avcc = new Uint8Array(
+                    6 + // 配置记录
+                    2 + spsRbsp.length + // SPS
+                    1 + // PPS 数量
+                    2 + ppsRbsp.length    // PPS
+                );
+
+                let offset = 0;
+
+                // [配置记录] (6字节)
+                avcc[offset++] = 1;            // configurationVersion
+                avcc[offset++] = profile;      // profile
+                avcc[offset++] = compatibility; // profileCompatibility
+                avcc[offset++] = level;        // level
+                avcc[offset++] = 0xFF;         // lengthSizeMinusOne (4字节长度前缀)
+                avcc[offset++] = 0xE1;         // numOfSequenceParameterSets (1个SPS)
+
+                // [SPS]
+                avcc[offset++] = (spsRbsp.length >> 8) & 0xFF; // SPS 长度
+                avcc[offset++] = spsRbsp.length & 0xFF;
+                avcc.set(spsRbsp, offset);
+                offset += spsRbsp.length;
+
+                // [PPS]
+                avcc[offset++] = 1;                            // numOfPictureParameterSets
+                avcc[offset++] = (ppsRbsp.length >> 8) & 0xFF; // PPS 长度
+                avcc[offset++] = ppsRbsp.length & 0xFF;
+                avcc.set(ppsRbsp, offset);
+
+                console.log('🔍 AVCC 总长度:', avcc.length);
+                console.log('🔍 AVCC 前20字节:', Array.from(avcc.slice(0, 20)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+
+                return avcc;
+            }
+
+            close() {
+                if (this.decoder) {
+                    this.decoder.close();
+                    this.decoder = null;
+                }
+                this.initialized = false;
+            }
+        }
+
         // 渲染帧到Canvas
         async function renderFrame(imageData) {
-            if (!ctx) return;
+            if (!ctx) {
+                console.error('Canvas context未初始化');
+                return;
+            }
 
             try {
-                // 解码PNG图像
-                const bitmap = await createImageBitmap(imageData);
+                // 将Uint8Array转换为Blob (JPEG格式)
+                const blob = new Blob([imageData], { type: 'image/jpeg' });
+
+                // 解码JPEG图像
+                const bitmap = await createImageBitmap(blob);
 
                 // 调整Canvas大小
                 if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
@@ -292,7 +705,22 @@
                 bitmap.close();
 
             } catch (error) {
-                console.error('渲染帧失败:', error);
+                console.error('渲染 JPEG 帧失败:', error);
+            }
+        }
+
+        // 渲染 H.264 帧
+        async function renderH264Frame(data, isKeyFrame, sps, pps) {
+            if (!h264Decoder) {
+                console.error('H.264 解码器未初始化');
+                return;
+            }
+
+            try {
+                await h264Decoder.decode(data, isKeyFrame, sps, pps);
+            } catch (error) {
+                console.error('解码 H.264 帧失败:', error);
+                throw error;
             }
         }
 
@@ -305,8 +733,20 @@
             ws = new WebSocket(wsURL);
 
             ws.onopen = () => {
-                console.log('WebSocket已连接');
                 setStatus('connecting', '等待客户端...');
+
+                // 发送编解码器支持信息
+                ws.send(JSON.stringify({
+                    type: 'codec_support',
+                    h264: codecSupport.h264,
+                    jpeg: codecSupport.jpeg
+                }));
+
+                // 请求立即发送关键帧（初始化解码器）
+                console.log('📹 请求发送关键帧...');
+                ws.send(JSON.stringify({
+                    type: 'request_keyframe'
+                }));
             };
 
             ws.onmessage = async (event) => {
@@ -320,13 +760,19 @@
             };
 
             ws.onclose = () => {
-                console.log('WebSocket已关闭');
                 setStatus('disconnected', '连接已断开');
                 isConnected = false;
 
                 // 停止FPS更新
                 if (fpsUpdateInterval) {
                     clearInterval(fpsUpdateInterval);
+                }
+
+                // 关闭 H.264 解码器
+                if (h264Decoder) {
+                    h264Decoder.close();
+                    h264Decoder = null;
+                    useH264 = false;
                 }
 
                 // 5秒后重连
@@ -342,21 +788,128 @@
         async function handleMessage(data) {
             switch (data.type) {
                 case 'init':
-                    console.log('初始化完成');
                     // 初始化Canvas
                     canvas = document.getElementById('vnc_canvas');
                     ctx = canvas.getContext('2d', { alpha: false });
 
+                    // 显示Canvas
+                    canvas.style.display = 'block';
+
                     // 启动FPS统计
                     lastFrameTime = performance.now();
                     fpsUpdateInterval = setInterval(updateFPS, 1000);
+
+                    // 标记为已连接
+                    setStatus('connected', '已连接');
+
+                    // 设置Canvas事件监听器
+                    setupCanvasEventListeners();
                     break;
 
                 case 'frame':
+                    // 首次接收到帧数据时初始化Canvas
+                    if (!ctx) {
+                        canvas = document.getElementById('vnc_canvas');
+                        ctx = canvas.getContext('2d', { alpha: false });
+
+                        // 显示Canvas
+                        canvas.style.display = 'block';
+
+                        // 启动FPS统计
+                        lastFrameTime = performance.now();
+                        fpsUpdateInterval = setInterval(updateFPS, 1000);
+
+                        // 标记为已连接
+                        setStatus('connected', '已连接');
+
+                        // 设置Canvas事件监听器
+                        setupCanvasEventListeners();
+
+                        // 初始化 H.264 解码器（如果使用 H.264）
+                        if (data.codec === 'h264' && codecSupport.h264) {
+                            try {
+                                h264Decoder = new H264Decoder();
+                                await h264Decoder.init();
+                                useH264 = true;
+                                console.log('✅ 已启用 H.264 解码');
+                            } catch (e) {
+                                console.error('初始化 H.264 解码器失败:', e);
+                                useH264 = false;
+                            }
+                        }
+                    }
+
                     // 渲染帧数据
-                    if (data.data && data.data.length > 0) {
-                        const imageData = new Uint8Array(data.data);
-                        await renderFrame(imageData);
+                    try {
+                        if (data.codec === 'h264' && useH264) {
+                            // H.264 解码路径
+                            if (data.h264_data && data.h264_data.length > 0) {
+                                // 解码 base64 数据
+                                const binaryString = atob(data.h264_data);
+                                const h264Data = new Uint8Array(binaryString.length);
+                                for (let i = 0; i < binaryString.length; i++) {
+                                    h264Data[i] = binaryString.charCodeAt(i);
+                                }
+
+                                // 解码 SPS/PPS
+                                const sps = data.sps ? (() => {
+                                    const spsString = atob(data.sps);
+                                    const spsArray = new Uint8Array(spsString.length);
+                                    for (let i = 0; i < spsString.length; i++) {
+                                        spsArray[i] = spsString.charCodeAt(i);
+                                    }
+                                    return spsArray;
+                                })() : null;
+
+                                const pps = data.pps ? (() => {
+                                    const ppsString = atob(data.pps);
+                                    const ppsArray = new Uint8Array(ppsString.length);
+                                    for (let i = 0; i < ppsString.length; i++) {
+                                        ppsArray[i] = ppsString.charCodeAt(i);
+                                    }
+                                    return ppsArray;
+                                })() : null;
+
+                                console.log('📹 收到 H.264 帧:', {
+                                    isKeyFrame: data.is_key_frame,
+                                    dataLength: h264Data.length,
+                                    spsLength: sps ? sps.length : 0,
+                                    ppsLength: pps ? pps.length : 0
+                                });
+
+                                try {
+                                    await renderH264Frame(
+                                        h264Data,
+                                        data.is_key_frame,
+                                        sps,
+                                        pps
+                                    );
+                                } catch (e) {
+                                    // H.264 解码失败，尝试 JPEG 回退
+                                    console.warn('H.264 解码失败，尝试 JPEG 回退:', e);
+                                    if (data.data && data.data.length > 0) {
+                                        const binaryString = atob(data.data);
+                                        const imageData = new Uint8Array(binaryString.length);
+                                        for (let i = 0; i < binaryString.length; i++) {
+                                            imageData[i] = binaryString.charCodeAt(i);
+                                        }
+                                        await renderFrame(imageData);
+                                    }
+                                }
+                            }
+                        } else {
+                            // JPEG 解码路径（默认或回退）
+                            if (data.data && data.data.length > 0) {
+                                const binaryString = atob(data.data);
+                                const imageData = new Uint8Array(binaryString.length);
+                                for (let i = 0; i < binaryString.length; i++) {
+                                    imageData[i] = binaryString.charCodeAt(i);
+                                }
+                                await renderFrame(imageData);
+                            }
+                        }
+                    } catch (e) {
+                        console.error('处理帧数据失败:', e);
                     }
                     break;
 
@@ -383,81 +936,123 @@
             ws.send(JSON.stringify(message));
         }
 
-        // 键盘事件
-        document.addEventListener('keydown', (e) => {
-            e.preventDefault();
-            sendInput('key', { key_code: e.keyCode });
-        });
-
-        document.addEventListener('keyup', (e) => {
-            e.preventDefault();
-            sendInput('key', { key_code: e.keyCode });
-        });
-
-        // 鼠标事件
-        let mouseButtonMask = 0;
-
-        canvas = document.getElementById('vnc_canvas');
-
-        canvas.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            mouseButtonMask |= (1 << e.button);
-            sendInput('mouse', {
-                mouse_x: e.offsetX,
-                mouse_y: e.offsetY,
-                mouse_mask: mouseButtonMask
-            });
-        });
-
-        canvas.addEventListener('mouseup', (e) => {
-            e.preventDefault();
-            mouseButtonMask &= ~(1 << e.button);
-            sendInput('mouse', {
-                mouse_x: e.offsetX,
-                mouse_y: e.offsetY,
-                mouse_mask: mouseButtonMask
-            });
-        });
-
-        canvas.addEventListener('mousemove', (e) => {
-            e.preventDefault();
-            sendInput('mouse', {
-                mouse_x: e.offsetX,
-                mouse_y: e.offsetY,
-                mouse_mask: mouseButtonMask
-            });
-        });
-
-        // 防止右键菜单
-        canvas.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-        });
-
-        // 滚轮事件
-        canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            // VNC滚轮掩码：向上=8，向下=16
-            let scrollMask = 0;
-            if (e.deltaY < 0) {
-                scrollMask = 8;
-            } else if (e.deltaY > 0) {
-                scrollMask = 16;
+        // 发送Canvas尺寸
+        function sendCanvasSize() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                return;
             }
 
-            sendInput('mouse', {
-                mouse_x: e.offsetX,
-                mouse_y: e.offsetY,
-                mouse_mask: mouseButtonMask | scrollMask
+            sendInput('canvas_size', {
+                canvas_width: canvas.clientWidth,
+                canvas_height: canvas.clientHeight
             });
+        }
 
-            // 发送滚轮复位
-            setTimeout(() => {
+        // 设置Canvas事件监听器
+        function setupCanvasEventListeners() {
+            // 发送初始Canvas尺寸
+            sendCanvasSize();
+
+            // 监听Canvas尺寸变化
+            const resizeObserver = new ResizeObserver(() => {
+                sendCanvasSize();
+            });
+            resizeObserver.observe(canvas);
+
+            // 鼠标事件
+            let mouseButtonMask = 0;
+
+            canvas.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                if (!document.getElementById('controlToggle').checked) return;
+
+                mouseButtonMask |= (1 << e.button);
                 sendInput('mouse', {
                     mouse_x: e.offsetX,
                     mouse_y: e.offsetY,
-                    mouse_mask: mouseButtonMask
+                    mouse_mask: mouseButtonMask,
+                    canvas_width: canvas.clientWidth,
+                    canvas_height: canvas.clientHeight
                 });
-            }, 100);
+            });
+
+            canvas.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                if (!document.getElementById('controlToggle').checked) return;
+
+                mouseButtonMask &= ~(1 << e.button);
+                sendInput('mouse', {
+                    mouse_x: e.offsetX,
+                    mouse_y: e.offsetY,
+                    mouse_mask: mouseButtonMask,
+                    canvas_width: canvas.clientWidth,
+                    canvas_height: canvas.clientHeight
+                });
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                e.preventDefault();
+                if (!document.getElementById('controlToggle').checked) return;
+
+                sendInput('mouse', {
+                    mouse_x: e.offsetX,
+                    mouse_y: e.offsetY,
+                    mouse_mask: mouseButtonMask,
+                    canvas_width: canvas.clientWidth,
+                    canvas_height: canvas.clientHeight
+                });
+            });
+
+            // 防止右键菜单
+            canvas.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
+
+            // 滚轮事件
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if (!document.getElementById('controlToggle').checked) return;
+
+                // VNC滚轮掩码：向上=8，向下=16
+                let scrollMask = 0;
+                if (e.deltaY < 0) {
+                    scrollMask = 8;
+                } else if (e.deltaY > 0) {
+                    scrollMask = 16;
+                }
+
+                sendInput('mouse', {
+                    mouse_x: e.offsetX,
+                    mouse_y: e.offsetY,
+                    mouse_mask: mouseButtonMask | scrollMask,
+                    canvas_width: canvas.clientWidth,
+                    canvas_height: canvas.clientHeight
+                });
+
+                // 发送滚轮复位
+                setTimeout(() => {
+                    sendInput('mouse', {
+                        mouse_x: e.offsetX,
+                        mouse_y: e.offsetY,
+                        mouse_mask: mouseButtonMask,
+                        canvas_width: canvas.clientWidth,
+                        canvas_height: canvas.clientHeight
+                    });
+                }, 100);
+            });
+        }
+
+        // 键盘事件
+        document.addEventListener('keydown', (e) => {
+            if (!document.getElementById('controlToggle').checked) return;
+            e.preventDefault();
+            sendInput('keyboard', { key_code: e.keyCode });
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (!document.getElementById('controlToggle').checked) return;
+            e.preventDefault();
+            sendInput('keyboard', { key_code: -e.keyCode }); // 负数表示释放
         });
 
         // 延迟统计
@@ -495,10 +1090,7 @@
 
         // 页面可见性变化时优化
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                console.log('页面隐藏，暂停渲染优化');
-            } else {
-                console.log('页面可见，恢复渲染');
+            if (!document.hidden) {
                 lastFrameTime = performance.now();
                 frameCount = 0;
             }
