@@ -150,11 +150,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-13
+          - runner: macos-15-intel
             goarch: amd64
             artifact: deskgo-desktop-darwin-amd64
             arch_label: amd64
-          - runner: macos-14
+          - runner: macos-15
             goarch: arm64
             artifact: deskgo-desktop-darwin-arm64
             arch_label: arm64
