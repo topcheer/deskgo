@@ -63,8 +63,8 @@ func TestCollectSiteDownloadsUsesGitHubReleaseFallbackForMissingDesktopGroup(t *
 	if data.ChecksumURL != "https://example.com/SHA256SUMS.txt" {
 		t.Fatalf("unexpected checksum URL: %s", data.ChecksumURL)
 	}
-	if data.AutostartShellURL != "/downloads/deskgo-autostart.sh" {
-		t.Fatalf("expected local shell installer URL, got %s", data.AutostartShellURL)
+	if data.AutostartShellURL != "https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.sh" {
+		t.Fatalf("expected raw shell installer URL, got %s", data.AutostartShellURL)
 	}
 	if data.AutostartPowerShellURL != "https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1" {
 		t.Fatalf("expected raw PowerShell fallback URL, got %s", data.AutostartPowerShellURL)

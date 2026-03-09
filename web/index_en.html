@@ -1015,7 +1015,7 @@
                 <div class="section-heading">
                     <div>
                         <h2>Install autostart online in one step.</h2>
-                        <p>The shell and PowerShell installers support both guided prompts and unattended flags. They detect the current OS/architecture, download the matching CLI, verify SHA256, write a fixed session config, and register per-user autostart.</p>
+                        <p>The recommended flow is to copy the GitHub online install commands below. The shell and PowerShell installers support both guided prompts and unattended flags, detect the current OS/architecture, download the matching CLI, verify SHA256, write a fixed session config, and register per-user autostart.</p>
                     </div>
                 </div>
                 <div class="downloads">
@@ -1031,10 +1031,10 @@
                         <ul>
                             <li>Supports guided install/uninstall and <code>--non-interactive</code> flag-based execution</li>
                             <li>Lets you choose relay URL, fixed session name, codec, and release version</li>
-                            <li>The installer itself can be fetched online; the CLI binary comes from the GitHub latest release by default</li>
+                            <li>The install command pulls the script from GitHub Raw, while the CLI binary comes from the GitHub latest release by default</li>
                         </ul>
                         <div class="inline-links">
-                            <a class="primary-button" href="{{ .AutostartShellURL }}">Download shell script</a>
+                            <a class="primary-button" href="{{ .AutostartShellURL }}">GitHub shell script</a>
                             <a class="ghost-button" href="{{ .AutostartGuideENURL }}">Full guide</a>
                         </div>
                         <pre class="command-snippet"><code>curl -fsSL {{ .AutostartShellURL }} -o /tmp/deskgo-autostart.sh
@@ -1053,10 +1053,10 @@ bash /tmp/deskgo-autostart.sh install</code></pre>
                         <ul>
                             <li>Supports guided or unattended install, plus clean uninstall</li>
                             <li>Downloads the matching Windows CLI asset and verifies <code>SHA256SUMS.txt</code></li>
-                            <li>The recommended codec for Windows autostart is currently <code>jpeg</code></li>
+                            <li>The recommended codec for Windows autostart is currently <code>jpeg</code>, and the install command also pulls the script from GitHub Raw</li>
                         </ul>
                         <div class="inline-links">
-                            <a class="primary-button" href="{{ .AutostartPowerShellURL }}">Download PowerShell script</a>
+                            <a class="primary-button" href="{{ .AutostartPowerShellURL }}">GitHub PowerShell script</a>
                             <a class="ghost-button" href="{{ .AutostartGuideENURL }}">Full guide</a>
                         </div>
                         <pre class="command-snippet"><code>$script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
@@ -1071,7 +1071,7 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
                             </svg>
                         </div>
                         <h3>Before you roll it out</h3>
-                        <p>Once this branch is on GitHub, users can fetch the installer scripts online from this page, but successful installation still depends on the release assets matching the script contract.</p>
+                        <p>This section shows the user-facing GitHub online install flow directly; successful installation still depends on the release assets matching the script contract.</p>
                         <ul>
                             <li>The latest release must contain the matching <code>deskgo-desktop-&lt;os&gt;-&lt;arch&gt;</code> asset and <code>SHA256SUMS.txt</code></li>
                             <li>Autostart is intentionally scoped to the current logged-in desktop session, not a headless system service</li>

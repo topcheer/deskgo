@@ -153,14 +153,6 @@ func collectSiteDownloads(downloadsDir string) siteDownloads {
 			data.HasChecksums = true
 			continue
 		}
-		if name == "deskgo-autostart.sh" {
-			data.AutostartShellURL = "/downloads/" + name
-			continue
-		}
-		if name == "deskgo-autostart.ps1" {
-			data.AutostartPowerShellURL = "/downloads/" + name
-			continue
-		}
 
 		parsed, ok := parseDownloadName(name)
 		if !ok {

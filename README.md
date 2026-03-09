@@ -91,7 +91,7 @@ HTTPS_PROXY=http://proxy.internal:8080 ./bin/deskgo-desktop -server wss://deskgo
 
 ### 4. 安装自动运行
 
-在线安装（脚本来自 GitHub，CLI 默认从 latest release 下载）：
+推荐直接使用 GitHub 在线脚本安装（安装脚本来自 GitHub Raw，CLI 默认从 GitHub latest release 下载）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.sh -o /tmp/deskgo-autostart.sh
@@ -116,8 +116,21 @@ Windows：
 powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 install
 ```
 
-在线脚本可直接获取，但成功安装仍依赖 latest release 中存在匹配平台的 `deskgo-desktop-<os>-<arch>` 资产和 `SHA256SUMS.txt`；如果你要做可重复部署，请显式传入 `--version` 固定版本。
+如果你已经 clone 仓库，也可以直接运行仓库内的同一份脚本：
 
+macOS / Linux：
+
+```bash
+./scripts/deskgo-autostart.sh install
+```
+
+Windows：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 install
+```
+
+在线安装成功仍依赖 GitHub latest release 中存在匹配平台的 `deskgo-desktop-<os>-<arch>` 资产和 `SHA256SUMS.txt`；如果你要做可重复部署，请显式传入 `--version` 固定版本。
 更多引导式与非引导式示例见 [`docs/AUTORUN.md`](docs/AUTORUN.md)。
 
 ## Docker 与云部署

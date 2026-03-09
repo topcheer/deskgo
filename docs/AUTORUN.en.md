@@ -30,7 +30,7 @@ The release bundle also includes:
 
 ## Online install
 
-Once the code is on GitHub, you can fetch the installers directly:
+The recommended flow is to fetch the installer directly from GitHub Raw:
 
 ### macOS / Linux
 
@@ -47,7 +47,7 @@ Invoke-WebRequest 'https://raw.githubusercontent.com/topcheer/deskgo/master/scri
 powershell -ExecutionPolicy Bypass -File $script install
 ```
 
-> Note: the online command fetches the installer script itself; the installer then downloads the matching CLI binary and `SHA256SUMS.txt` from GitHub releases.
+> Note: the online command fetches the GitHub-hosted installer script itself; the installer then downloads the matching CLI binary and `SHA256SUMS.txt` from the GitHub latest release.
 
 ## Guided install
 

@@ -1016,7 +1016,7 @@
                 <div class="section-heading">
                     <div>
                         <h2>在线一键安装自动运行。</h2>
-                        <p>Shell / PowerShell 脚本同时支持引导式安装与非引导参数模式，会按当前设备平台下载匹配 CLI、校验 SHA256、写入固定 session 配置，并按当前用户注册自动启动。</p>
+                        <p>推荐直接复制下方 GitHub 在线安装命令。Shell / PowerShell 脚本同时支持引导式安装与非引导参数模式，会按当前设备平台下载匹配 CLI、校验 SHA256、写入固定 session 配置，并按当前用户注册自动启动。</p>
                     </div>
                 </div>
                 <div class="downloads">
@@ -1032,10 +1032,10 @@
                         <ul>
                             <li>支持交互式安装 / 卸载，也支持 <code>--non-interactive</code> 直接传参</li>
                             <li>支持自定义 Relay、固定 Session 名字、Codec 与版本</li>
-                            <li>脚本本身可在线获取，CLI 二进制默认来自 GitHub latest release</li>
+                            <li>安装命令直接从 GitHub Raw 拉取脚本，CLI 二进制默认来自 GitHub latest release</li>
                         </ul>
                         <div class="inline-links">
-                            <a class="primary-button" href="{{ .AutostartShellURL }}">下载 shell 脚本</a>
+                            <a class="primary-button" href="{{ .AutostartShellURL }}">GitHub shell 脚本</a>
                             <a class="ghost-button" href="{{ .AutostartGuideZHURL }}">查看完整说明</a>
                         </div>
                         <pre class="command-snippet"><code>curl -fsSL {{ .AutostartShellURL }} -o /tmp/deskgo-autostart.sh
@@ -1054,10 +1054,10 @@ bash /tmp/deskgo-autostart.sh install</code></pre>
                         <ul>
                             <li>支持引导式或一次性传参安装，也支持卸载清理</li>
                             <li>自动下载匹配架构的 Windows CLI，并验证 <code>SHA256SUMS.txt</code></li>
-                            <li>Windows 当前自动运行模式建议使用 <code>jpeg</code> codec</li>
+                            <li>Windows 当前自动运行模式建议使用 <code>jpeg</code> codec，安装命令同样直接从 GitHub Raw 拉取脚本</li>
                         </ul>
                         <div class="inline-links">
-                            <a class="primary-button" href="{{ .AutostartPowerShellURL }}">下载 PowerShell 脚本</a>
+                            <a class="primary-button" href="{{ .AutostartPowerShellURL }}">GitHub PowerShell 脚本</a>
                             <a class="ghost-button" href="{{ .AutostartGuideZHURL }}">查看完整说明</a>
                         </div>
                         <pre class="command-snippet"><code>$script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
@@ -1072,7 +1072,7 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
                             </svg>
                         </div>
                         <h3>使用前请确认</h3>
-                        <p>提交到 GitHub 后，用户就可以通过这个页面直接在线拉取脚本；但真正安装成功还取决于发布产物是否满足脚本约定。</p>
+                        <p>这里展示的是直接面向用户的 GitHub 在线安装方式；真正安装成功仍取决于发布产物是否满足脚本约定。</p>
                         <ul>
                             <li>latest release 必须包含匹配平台的 <code>deskgo-desktop-&lt;os&gt;-&lt;arch&gt;</code> 资产与 <code>SHA256SUMS.txt</code></li>
                             <li>自动运行针对“当前登录用户的桌面会话”，不适合无人登录的系统服务场景</li>

@@ -91,7 +91,7 @@ HTTPS_PROXY=http://proxy.internal:8080 ./bin/deskgo-desktop -server wss://deskgo
 
 ### 4. Install autostart
 
-Online install (the script comes from GitHub, while the CLI defaults to the latest release asset):
+Recommended: install directly from the GitHub-hosted script (the installer comes from GitHub Raw, while the CLI defaults to the GitHub latest release asset):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.sh -o /tmp/deskgo-autostart.sh
@@ -116,8 +116,21 @@ Windows:
 powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 install
 ```
 
-The online installer can be fetched immediately, but successful installation still depends on the latest release containing the matching `deskgo-desktop-<os>-<arch>` asset and `SHA256SUMS.txt`. For repeatable rollouts, pin `--version`.
+If you have already cloned the repository, you can also run the same script locally:
 
+macOS / Linux:
+
+```bash
+./scripts/deskgo-autostart.sh install
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 install
+```
+
+Online installation still depends on the GitHub latest release containing the matching `deskgo-desktop-<os>-<arch>` asset and `SHA256SUMS.txt`. For repeatable rollouts, pin `--version`.
 More guided and unattended examples are documented in [`docs/AUTORUN.en.md`](docs/AUTORUN.en.md).
 
 ## Docker and cloud deployment

@@ -30,7 +30,7 @@ DeskGo 的 Desktop CLI 需要运行在真实的登录用户桌面会话里，才
 
 ## 在线安装
 
-如果代码已经推送到 GitHub，也可以直接在线获取脚本：
+推荐直接从 GitHub Raw 地址拉取安装脚本：
 
 ### macOS / Linux
 
@@ -47,7 +47,7 @@ Invoke-WebRequest 'https://raw.githubusercontent.com/topcheer/deskgo/master/scri
 powershell -ExecutionPolicy Bypass -File $script install
 ```
 
-> 注意：在线命令下载的是安装脚本本身，脚本随后会去 GitHub release 下载对应平台的 CLI 二进制和 `SHA256SUMS.txt`。
+> 注意：在线命令拉取的是 GitHub 上的安装脚本；安装脚本随后会去 GitHub latest release 下载对应平台的 CLI 二进制和 `SHA256SUMS.txt`。
 
 ## 引导式安装
 
