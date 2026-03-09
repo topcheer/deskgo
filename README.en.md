@@ -104,18 +104,6 @@ Invoke-WebRequest 'https://raw.githubusercontent.com/topcheer/deskgo/master/scri
 powershell -ExecutionPolicy Bypass -File $script install
 ```
 
-macOS / Linux:
-
-```bash
-./scripts/deskgo-autostart.sh install
-```
-
-Windows:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 install
-```
-
 If you have already cloned the repository, you can also run the same script locally:
 
 macOS / Linux:
