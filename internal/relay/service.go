@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -130,7 +131,7 @@ func NewService() *Service {
 
 // HandleDesktopConnection 处理WebSocket连接
 func HandleDesktopConnection(c *gin.Context) {
-	sessionID := c.Param("session_id")
+	sessionID := normalizeSessionID(c.Param("session_id"))
 	userID := c.Query("user_id")
 	connectionType := c.Query("type") // "client" 或 "web"
 
@@ -463,6 +464,10 @@ func getServiceOrCreate(sessionID string) *Service {
 		log.Println("🚀 全局中继服务已创建")
 	})
 	return globalService
+}
+
+func normalizeSessionID(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 // StartCleanupRoutine 启动清理超时会话的协程

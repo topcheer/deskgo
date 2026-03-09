@@ -82,6 +82,7 @@ func normalizeConfig(config Config) Config {
 	if config.H264KeyInterval == 0 {
 		config.H264KeyInterval = defaults.H264KeyInterval
 	}
+	config.Session = normalizeSessionID(config.Session)
 
 	return config
 }
@@ -197,7 +198,7 @@ func MergeWithFlags(config Config, server *string, proxy *string, display *int, 
 		result.Quality = *quality
 	}
 	if session != nil && *session != "" {
-		result.Session = *session
+		result.Session = normalizeSessionID(*session)
 	}
 	if codec != nil && *codec != "" {
 		result.Codec = *codec

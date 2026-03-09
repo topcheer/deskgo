@@ -34,7 +34,7 @@ func TestLoadConfigUsesExplicitPathContents(t *testing.T) {
 
 	custom := []byte(`{
   "server": "wss://relay.example.com/api/desktop",
-  "session": "office-mac",
+  "session": "Office-Mac",
   "codec": "jpeg",
   "fps": 12
 }`)

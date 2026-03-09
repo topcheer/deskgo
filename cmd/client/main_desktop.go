@@ -103,7 +103,7 @@ type DesktopCapture struct {
 func main() {
 	// 命令行参数（优先级高于配置文件）
 	configFile := flag.String("config", "", "配置文件路径（留空按默认优先级查找）")
-	serverURL := flag.String("server", "", "Relay WebSocket URL")
+	serverURL := flag.String("server", "", "Relay URL (http(s):// or ws(s)://)")
 	proxyURL := flag.String("proxy", "", "Relay proxy URL (http://, https://, or socks5://)")
 	display := flag.Int("display", 0, "显示器索引 (0=主显示器，使用配置文件默认值)")
 	fps := flag.Int("fps", 0, "帧率 (0=使用配置文件默认值)")
@@ -123,7 +123,7 @@ func main() {
 	config = MergeWithFlags(config, serverURL, proxyURL, display, fps, quality, sessionID, codec, h264Bitrate)
 
 	// 生成会话ID
-	sid := config.Session
+	sid := normalizeSessionID(config.Session)
 	if sid == "" {
 		sid = uuid.New().String()
 	}
@@ -200,58 +200,22 @@ func printHeader(sessionID, configPath, serverURL string, display, fps, quality 
 // getWebURL 从 WebSocket URL 生成 Web URL
 // 例如: wss://deskgo.zty8.cn/api/desktop -> https://deskgo.zty8.cn
 func getWebURL(wsURL string) string {
-	// 提取主机名部分
-	// wss://deskgo.zty8.cn/api/desktop -> deskgo.zty8.cn
-	// ws://localhost:8082/api/desktop -> localhost:8082
-
-	if len(wsURL) >= 3 {
-		var protocol string
-		var hostAndPath string
-
-		if wsURL[:3] == "wss" {
-			protocol = "https://"
-			hostAndPath = wsURL[6:] // 去掉 wss://
-		} else if wsURL[:2] == "ws" {
-			protocol = "http://"
-			hostAndPath = wsURL[5:] // 去掉 ws://
-		} else {
-			return wsURL
-		}
-
-		// 找到第一个 / 的位置，只保留主机名
-		slashIndex := 0
-		for i, c := range hostAndPath {
-			if c == '/' {
-				slashIndex = i
-				break
-			}
-		}
-
-		if slashIndex > 0 {
-			return protocol + hostAndPath[:slashIndex]
-		}
-		return protocol + hostAndPath
-	}
-	return wsURL
+	return relayWebBaseURL(wsURL)
 }
 
 func (c *DesktopCapture) connect(serverURL string) error {
+	normalizedServerURL, err := normalizeRelayServerURL(serverURL)
+	if err != nil {
+		return err
+	}
+
 	// 解析 URL
-	u, err := url.Parse(serverURL)
+	u, err := url.Parse(normalizedServerURL)
 	if err != nil {
 		return fmt.Errorf("解析URL失败: %w", err)
 	}
 
-	// 构建正确的路径：/api/desktop/<session_id>
-	// 而不是：/api/desktop?session_id=<session_id>
-	path := u.Path
-	if path == "" || path == "/" || path == "/api/desktop" {
-		// 移除尾部斜杠（如果有）
-		path = "/api/desktop"
-	}
-
-	// 将 session_id 添加到路径中
-	u.Path = fmt.Sprintf("%s/%s", path, c.sessionID)
+	u.Path = fmt.Sprintf("%s/%s", strings.TrimRight(u.Path, "/"), url.PathEscape(normalizeSessionID(c.sessionID)))
 
 	// 添加查询参数
 	// 注意：必须使用 "client" 而不是 "desktop"，因为 Relay 检查的是 "client"

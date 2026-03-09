@@ -90,7 +90,7 @@ function Normalize-SessionName {
 
     $normalized = ($Value -replace '[^A-Za-z0-9._-]+', '-').Trim('-')
     $normalized = $normalized -replace '-{2,}', '-'
-    return $normalized
+    return $normalized.ToLowerInvariant()
 }
 
 function Get-DefaultSessionName {

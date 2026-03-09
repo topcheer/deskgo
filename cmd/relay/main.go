@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/topcheer/deskgo/internal/relay"
@@ -86,7 +87,7 @@ func main() {
 
 	// 会话页面路由
 	router.GET("/session/:session_id", func(c *gin.Context) {
-		sessionID := c.Param("session_id")
+		sessionID := strings.ToLower(strings.TrimSpace(c.Param("session_id")))
 		c.HTML(http.StatusOK, "desktop.html", gin.H{
 			"sessionID": sessionID,
 			"LangTag":   "zh-CN",
@@ -95,7 +96,7 @@ func main() {
 	})
 
 	router.GET("/en/session/:session_id", func(c *gin.Context) {
-		sessionID := c.Param("session_id")
+		sessionID := strings.ToLower(strings.TrimSpace(c.Param("session_id")))
 		c.HTML(http.StatusOK, "desktop.html", gin.H{
 			"sessionID": sessionID,
 			"LangTag":   "en",

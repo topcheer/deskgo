@@ -1192,7 +1192,7 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
         document.getElementById('sessionForm').addEventListener('submit', (event) => {
             event.preventDefault();
             const sessionInput = document.getElementById('sessionInput');
-            const sessionId = sessionInput.value.trim();
+            const sessionId = sessionInput.value.trim().toLowerCase();
             if (!sessionId) {
                 sessionInput.focus();
                 return;

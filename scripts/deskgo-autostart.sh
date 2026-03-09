@@ -154,7 +154,7 @@ confirm_action() {
 sanitize_session_name() {
   local raw="$1"
   local sanitized
-  sanitized="$(printf '%s' "$raw" | tr -c 'A-Za-z0-9._-' '-' | sed -e 's/^-*//' -e 's/-*$//' -e 's/--*/-/g')"
+  sanitized="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9._-' '-' | sed -e 's/^-*//' -e 's/-*$//' -e 's/--*/-/g')"
   printf '%s' "$sanitized"
 }
 

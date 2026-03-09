@@ -167,3 +167,23 @@ func TestStopCaptureOnlyAfterLastViewerDisconnects(t *testing.T) {
 		t.Fatalf("expected stop_capture after last viewer leaves, got %q", stopMsg.Type)
 	}
 }
+
+func TestSessionIDsAreCaseInsensitive(t *testing.T) {
+	_, wsBaseURL := newRelayTestServer(t)
+
+	cliConn := dialTestConn(t, wsBaseURL+"/Win11Studio?type=client&user_id=cli")
+	cliMessages := startDesktopMessageReader(t, cliConn)
+	viewer := dialTestConn(t, wsBaseURL+"/win11studio?type=web&user_id=viewer")
+
+	startMsg := awaitDesktopMessage(t, cliMessages, 2*time.Second)
+	if startMsg.Type != "start_capture" {
+		t.Fatalf("expected start_capture, got %q", startMsg.Type)
+	}
+	if startMsg.SessionID != "win11studio" {
+		t.Fatalf("expected normalized session id, got %q", startMsg.SessionID)
+	}
+
+	if err := viewer.Close(); err != nil {
+		t.Fatalf("close viewer: %v", err)
+	}
+}
