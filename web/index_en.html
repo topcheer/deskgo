@@ -1037,7 +1037,8 @@
                             <a class="primary-button" href="{{ .AutostartShellURL }}">GitHub shell script</a>
                             <a class="ghost-button" href="{{ .AutostartGuideENURL }}">Full guide</a>
                         </div>
-                        <pre class="command-snippet"><code>curl -fsSL {{ .AutostartShellURL }} -o /tmp/deskgo-autostart.sh
+                        <pre class="command-snippet"><code>rm -f /tmp/deskgo-autostart.sh
+curl -fsSL -H 'Cache-Control: no-cache' "{{ .AutostartShellURL }}?ts=$(date +%s)" -o /tmp/deskgo-autostart.sh
 bash /tmp/deskgo-autostart.sh install</code></pre>
                     </article>
                     <article class="download-card">
@@ -1060,7 +1061,9 @@ bash /tmp/deskgo-autostart.sh install</code></pre>
                             <a class="ghost-button" href="{{ .AutostartGuideENURL }}">Full guide</a>
                         </div>
                         <pre class="command-snippet"><code>$script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
-Invoke-WebRequest '{{ .AutostartPowerShellURL }}' -OutFile $script
+$uri = "{{ .AutostartPowerShellURL }}?ts=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+Remove-Item $script -ErrorAction SilentlyContinue
+Invoke-WebRequest $uri -UseBasicParsing -Headers @{ 'Cache-Control' = 'no-cache' } -OutFile $script
 powershell -ExecutionPolicy Bypass -File $script install</code></pre>
                     </article>
                     <article class="download-card">

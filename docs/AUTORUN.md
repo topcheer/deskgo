@@ -35,7 +35,8 @@ DeskGo 的 Desktop CLI 需要运行在真实的登录用户桌面会话里，才
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.sh -o /tmp/deskgo-autostart.sh
+rm -f /tmp/deskgo-autostart.sh
+curl -fsSL -H 'Cache-Control: no-cache' "https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.sh?ts=$(date +%s)" -o /tmp/deskgo-autostart.sh
 bash /tmp/deskgo-autostart.sh install
 ```
 
@@ -43,11 +44,13 @@ bash /tmp/deskgo-autostart.sh install
 
 ```powershell
 $script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
-Invoke-WebRequest 'https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1' -OutFile $script
+$uri = "https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1?ts=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+Remove-Item $script -ErrorAction SilentlyContinue
+Invoke-WebRequest $uri -UseBasicParsing -Headers @{ 'Cache-Control' = 'no-cache' } -OutFile $script
 powershell -ExecutionPolicy Bypass -File $script install
 ```
 
-> 注意：在线命令拉取的是 GitHub 上的安装脚本；安装脚本随后会去 GitHub latest release 下载对应平台的 CLI 二进制和 `SHA256SUMS.txt`。
+> 注意：在线命令拉取的是 GitHub 上的安装脚本；安装脚本随后会去 GitHub latest release 下载对应平台的 CLI 二进制和 `SHA256SUMS.txt`。命令中的 `?ts=` 和 `Cache-Control: no-cache` 用于尽量绕开陈旧缓存。
 
 ## 引导式安装
 

@@ -35,7 +35,8 @@ The recommended flow is to fetch the installer directly from GitHub Raw:
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.sh -o /tmp/deskgo-autostart.sh
+rm -f /tmp/deskgo-autostart.sh
+curl -fsSL -H 'Cache-Control: no-cache' "https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.sh?ts=$(date +%s)" -o /tmp/deskgo-autostart.sh
 bash /tmp/deskgo-autostart.sh install
 ```
 
@@ -43,11 +44,13 @@ bash /tmp/deskgo-autostart.sh install
 
 ```powershell
 $script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
-Invoke-WebRequest 'https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1' -OutFile $script
+$uri = "https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1?ts=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+Remove-Item $script -ErrorAction SilentlyContinue
+Invoke-WebRequest $uri -UseBasicParsing -Headers @{ 'Cache-Control' = 'no-cache' } -OutFile $script
 powershell -ExecutionPolicy Bypass -File $script install
 ```
 
-> Note: the online command fetches the GitHub-hosted installer script itself; the installer then downloads the matching CLI binary and `SHA256SUMS.txt` from the GitHub latest release.
+> Note: the online command fetches the GitHub-hosted installer script itself; the installer then downloads the matching CLI binary and `SHA256SUMS.txt` from the GitHub latest release. The `?ts=` query string and `Cache-Control: no-cache` header help avoid stale caches.
 
 ## Guided install
 

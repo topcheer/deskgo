@@ -94,15 +94,20 @@ HTTPS_PROXY=http://proxy.internal:8080 ./bin/deskgo-desktop -server wss://deskgo
 Recommended: install directly from the GitHub-hosted script (the installer comes from GitHub Raw, while the CLI defaults to the GitHub latest release asset):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.sh -o /tmp/deskgo-autostart.sh
+rm -f /tmp/deskgo-autostart.sh
+curl -fsSL -H 'Cache-Control: no-cache' "https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.sh?ts=$(date +%s)" -o /tmp/deskgo-autostart.sh
 bash /tmp/deskgo-autostart.sh install
 ```
 
 ```powershell
 $script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
-Invoke-WebRequest 'https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1' -OutFile $script
+$uri = "https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1?ts=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+Remove-Item $script -ErrorAction SilentlyContinue
+Invoke-WebRequest $uri -UseBasicParsing -Headers @{ 'Cache-Control' = 'no-cache' } -OutFile $script
 powershell -ExecutionPolicy Bypass -File $script install
 ```
+
+The `?ts=` query string and `Cache-Control: no-cache` header are there to avoid stale proxy/CDN caches and force a fresh copy of the script.
 
 If you have already cloned the repository, you can also run the same script locally:
 

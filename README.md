@@ -94,15 +94,20 @@ HTTPS_PROXY=http://proxy.internal:8080 ./bin/deskgo-desktop -server wss://deskgo
 推荐直接使用 GitHub 在线脚本安装（安装脚本来自 GitHub Raw，CLI 默认从 GitHub latest release 下载）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.sh -o /tmp/deskgo-autostart.sh
+rm -f /tmp/deskgo-autostart.sh
+curl -fsSL -H 'Cache-Control: no-cache' "https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.sh?ts=$(date +%s)" -o /tmp/deskgo-autostart.sh
 bash /tmp/deskgo-autostart.sh install
 ```
 
 ```powershell
 $script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
-Invoke-WebRequest 'https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1' -OutFile $script
+$uri = "https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1?ts=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+Remove-Item $script -ErrorAction SilentlyContinue
+Invoke-WebRequest $uri -UseBasicParsing -Headers @{ 'Cache-Control' = 'no-cache' } -OutFile $script
 powershell -ExecutionPolicy Bypass -File $script install
 ```
+
+上面的 `?ts=` 与 `Cache-Control: no-cache` 用于尽量绕开代理或 CDN 的陈旧缓存，确保拉到最新脚本。
 
 如果你已经 clone 仓库，也可以直接运行仓库内的同一份脚本：
 
