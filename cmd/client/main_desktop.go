@@ -12,6 +12,7 @@ import (
 	"image/jpeg"
 	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -93,6 +94,9 @@ type DesktopCapture struct {
 	// Web端Canvas尺寸（用于坐标映射）
 	canvasWidth  int
 	canvasHeight int
+
+	// Relay 代理配置
+	proxyURL string
 }
 
 func main() {
@@ -104,6 +108,7 @@ func main() {
 
 	// 命令行参数（优先级高于配置文件）
 	serverURL := flag.String("server", "", "Relay WebSocket URL")
+	proxyURL := flag.String("proxy", "", "Relay proxy URL (http://, https://, or socks5://)")
 	display := flag.Int("display", 0, "显示器索引 (0=主显示器，使用配置文件默认值)")
 	fps := flag.Int("fps", 0, "帧率 (0=使用配置文件默认值)")
 	quality := flag.Int("quality", 0, "JPEG 质量 (1-100, 0=使用配置文件默认值)")
@@ -113,7 +118,7 @@ func main() {
 	flag.Parse()
 
 	// 合并配置文件和命令行参数
-	config = MergeWithFlags(config, serverURL, display, fps, quality, sessionID, codec, h264Bitrate)
+	config = MergeWithFlags(config, serverURL, proxyURL, display, fps, quality, sessionID, codec, h264Bitrate)
 
 	// 生成会话ID
 	sid := config.Session
@@ -128,6 +133,7 @@ func main() {
 	capture := &DesktopCapture{
 		sessionID:      sid,
 		displayIndex:   config.Display,
+		proxyURL:       config.Proxy,
 		frameRate:      time.Second / time.Duration(config.FPS),
 		jpegQuality:    config.Quality,
 		running:        false, // 初始为false，等待start_capture消息
@@ -253,8 +259,21 @@ func (c *DesktopCapture) connect(serverURL string) error {
 
 	log.Printf("🔗 连接到: %s", u.String())
 
+	proxyURL, err := resolveRelayProxy(u.String(), c.proxyURL)
+	if err != nil {
+		return fmt.Errorf("解析代理配置失败: %w", err)
+	}
+	if proxyURL != nil {
+		log.Printf("🔀 通过代理连接 Relay: %s", proxyURL.Redacted())
+	}
+
 	// 连接 WebSocket（使用 gorilla/websocket）
-	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	dialer := *websocket.DefaultDialer
+	dialer.Proxy = func(req *http.Request) (*url.URL, error) {
+		return resolveRelayProxy(req.URL.String(), c.proxyURL)
+	}
+
+	conn, _, err := dialer.Dial(u.String(), nil)
 	if err != nil {
 		return fmt.Errorf("WebSocket 连接失败: %w", err)
 	}

@@ -17,6 +17,7 @@ This repository has been cleaned up to remove the old experimental scope and now
 - macOS: H.264-first by default with native desktop capture
 - Linux: H.264-first by default when ffmpeg/libx264 is available, with X11/XTEST input control
 - Windows: session output and input behavior aligned as closely as possible with macOS
+- Relay proxy support via `-proxy`, the `proxy` field in `deskgo.json`, or `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` (with automatic `ws://` / `wss://` mapping, plus optional `WS_PROXY` / `WSS_PROXY`)
 
 ### Relay server
 
@@ -72,6 +73,18 @@ Linux / Windows:
 
 ```bash
 ./bin/deskgo-desktop -server ws://localhost:8082/api/desktop -session demo
+```
+
+Use a relay proxy:
+
+```bash
+./bin/deskgo-desktop -server wss://deskgo.zty8.cn/api/desktop -session demo -proxy http://proxy.internal:8080
+```
+
+You can also rely on environment variables:
+
+```bash
+HTTPS_PROXY=http://proxy.internal:8080 ./bin/deskgo-desktop -server wss://deskgo.zty8.cn/api/desktop -session demo
 ```
 
 ## Docker and cloud deployment

@@ -17,6 +17,7 @@ DeskGo 是一个以 Go 编写的远程桌面串流方案，包含 Desktop CLI、
 - macOS：默认优先 H.264，支持原生桌面捕获
 - Linux：默认优先 H.264（检测到 ffmpeg/libx264 时启用），支持 X11/XTEST 输入控制
 - Windows：保持与 macOS 接近的一致会话输出与输入交互体验
+- 支持通过 `-proxy`、`deskgo.json` 中的 `proxy` 字段，或 `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY`（自动适配 `ws://` 与 `wss://`，也支持 `WS_PROXY` / `WSS_PROXY`）连接 Relay
 
 ### Relay Server
 
@@ -72,6 +73,18 @@ Linux / Windows：
 
 ```bash
 ./bin/deskgo-desktop -server ws://localhost:8082/api/desktop -session demo
+```
+
+通过代理连接 Relay：
+
+```bash
+./bin/deskgo-desktop -server wss://deskgo.zty8.cn/api/desktop -session demo -proxy http://proxy.internal:8080
+```
+
+也可以使用环境变量：
+
+```bash
+HTTPS_PROXY=http://proxy.internal:8080 ./bin/deskgo-desktop -server wss://deskgo.zty8.cn/api/desktop -session demo
 ```
 
 ## Docker 与云部署

@@ -21,6 +21,7 @@ import (
 // Config 配置结构
 type Config struct {
 	Server  string `json:"server"`
+	Proxy   string `json:"proxy,omitempty"`
 	Display int    `json:"display"`
 	FPS     int    `json:"fps"`
 	Quality int    `json:"quality"`
@@ -36,6 +37,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		Server:          "wss://deskgo.zty8.cn/api/desktop",
+		Proxy:           "",
 		Display:         0,                      // 主显示器
 		FPS:             15,                     // 15 fps
 		Quality:         75,                     // JPEG 质量 75%
@@ -63,6 +65,9 @@ func normalizeConfig(config Config) Config {
 	}
 	if config.FPS == 0 {
 		config.FPS = defaults.FPS
+	}
+	if config.Proxy == "" {
+		config.Proxy = defaults.Proxy
 	}
 	if config.Quality == 0 {
 		config.Quality = defaults.Quality
@@ -145,11 +150,14 @@ func saveConfigFile(path string, config Config) error {
 
 // MergeWithFlags 合并配置文件和命令行参数
 // 命令行参数优先级高于配置文件
-func MergeWithFlags(config Config, server *string, display *int, fps *int, quality *int, session *string, codec *string, h264Bitrate *int) Config {
+func MergeWithFlags(config Config, server *string, proxy *string, display *int, fps *int, quality *int, session *string, codec *string, h264Bitrate *int) Config {
 	result := config
 
 	if server != nil && *server != "" {
 		result.Server = *server
+	}
+	if proxy != nil && *proxy != "" {
+		result.Proxy = *proxy
 	}
 	if display != nil && *display != 0 {
 		result.Display = *display
