@@ -65,7 +65,11 @@ func relayWebBaseURL(raw string) string {
 		return raw
 	}
 
-	u.Path = ""
+	path := strings.TrimRight(u.Path, "/")
+	if strings.HasSuffix(path, "/api/desktop") {
+		path = strings.TrimSuffix(path, "/api/desktop")
+	}
+	u.Path = path
 	u.RawPath = ""
 	u.RawQuery = ""
 	u.Fragment = ""

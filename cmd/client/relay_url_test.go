@@ -56,7 +56,7 @@ func TestRelayWebBaseURL(t *testing.T) {
 	}{
 		{"ws://192.168.31.105:8082/api/desktop", "http://192.168.31.105:8082"},
 		{"wss://deskgo.example.com/api/desktop", "https://deskgo.example.com"},
-		{"http://relay.internal/custom/api/desktop", "http://relay.internal"},
+		{"http://relay.internal/custom/api/desktop", "http://relay.internal/custom"},
 	}
 
 	for _, tt := range tests {
