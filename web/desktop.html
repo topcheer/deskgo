@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="{{ .LangTag }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>DeskGo - 远程桌面 v2.0</title>
+    <title>{{ .Strings.PageTitle }}</title>
     <style>
         :root {
             color-scheme: dark;
@@ -39,20 +39,23 @@
 
         body.stream-active .header,
         body.stream-active .info-bar {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        body.stream-active .header {
-            transform: translateY(-24px);
-        }
-
-        body.stream-active .info-bar {
-            transform: translateY(24px);
+            display: none;
         }
 
         body.stream-active .container {
             height: 100vh;
+        }
+
+        body.stream-active #screen {
+            margin: 0;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        body.stream-active #screen::before,
+        body.stream-active #stream_canvas {
+            box-shadow: none;
         }
 
         .header,
@@ -216,7 +219,7 @@
             pointer-events: none;
         }
 
-        #vnc_canvas {
+        #stream_canvas {
             position: relative;
             z-index: 1;
             max-width: 100%;
@@ -384,18 +387,18 @@
         <div class="brand">
             <span class="brand-mark" aria-hidden="true"></span>
             <div class="brand-copy">
-                <span class="brand-eyebrow">DeskGo Session</span>
-                <strong class="brand-title">远程桌面串流</strong>
+                <span class="brand-eyebrow">{{ .Strings.BrandEyebrow }}</span>
+                <strong class="brand-title">{{ .Strings.BrandTitle }}</strong>
             </div>
         </div>
         <div class="status">
             <div class="control-toggle">
                 <input type="checkbox" id="controlToggle" checked>
-                <label for="controlToggle">启用控制</label>
+                <label for="controlToggle">{{ .Strings.ControlToggleLabel }}</label>
             </div>
             <div class="status-pill">
                 <div class="status-dot" id="statusDot"></div>
-                <span class="status-text" id="statusText">连接中...</span>
+                <span class="status-text" id="statusText">{{ .Strings.StatusConnecting }}</span>
             </div>
         </div>
     </div>
@@ -405,39 +408,77 @@
             <div class="loading" id="loading">
                 <div class="loading-card">
                     <div class="loading-spinner"></div>
-                    <p class="loading-title" id="loadingTitle">正在连接到远程桌面...</p>
-                    <p class="loading-detail" id="loadingDetail">会话 ID：{{ .sessionID }}</p>
-                    <button id="retryButton" class="retry-button" hidden>重新连接</button>
+                    <p class="loading-title" id="loadingTitle">{{ .Strings.LoadingConnectingTitle }}</p>
+                    <p class="loading-detail" id="loadingDetail">{{ .Strings.SessionDetailPrefix }}{{ .sessionID }}</p>
+                    <button id="retryButton" class="retry-button" hidden>{{ .Strings.RetryButtonLabel }}</button>
                 </div>
             </div>
-            <canvas id="vnc_canvas" style="display: none;"></canvas>
+            <canvas id="stream_canvas" style="display: none;"></canvas>
         </div>
 
         <div class="info-bar">
             <div class="info-item">
-                分辨率: <span class="info-value" id="resolution">-</span>
+                {{ .Strings.ResolutionLabel }}: <span class="info-value" id="resolution">-</span>
             </div>
             <div class="info-item">
-                帧率: <span class="info-value" id="fps">-</span>
+                {{ .Strings.FPSLabel }}: <span class="info-value" id="fps">-</span>
             </div>
             <div class="info-item">
-                延迟: <span class="info-value" id="latency">-</span>
+                {{ .Strings.LatencyLabel }}: <span class="info-value" id="latency">-</span>
             </div>
             <div class="info-item">
-                会话: <span class="info-value" id="sessionId">-</span>
+                {{ .Strings.SessionLabel }}: <span class="info-value" id="sessionId">-</span>
             </div>
             <div class="quality-indicator">
-                质量:
+                {{ .Strings.QualityLabel }}:
                 <div class="quality-bar">
                     <div class="quality-fill" id="qualityFill" style="width: 80%"></div>
                 </div>
-                <span class="info-value" id="qualityText">良好</span>
+                <span class="info-value" id="qualityText">{{ .Strings.QualityGood }}</span>
             </div>
         </div>
     </div>
 
     <script>
-        const sessionId = '{{ .sessionID }}';
+        const sessionId = {{ printf "%q" .sessionID }};
+        const ui = {
+            statusConnecting: {{ printf "%q" .Strings.StatusConnecting }},
+            statusWaitingClient: {{ printf "%q" .Strings.StatusWaitingClient }},
+            statusStreaming: {{ printf "%q" .Strings.StatusStreaming }},
+            statusError: {{ printf "%q" .Strings.StatusError }},
+            statusSessionEnded: {{ printf "%q" .Strings.StatusSessionEnded }},
+            statusDisconnected: {{ printf "%q" .Strings.StatusDisconnected }},
+            loadingConnectingTitle: {{ printf "%q" .Strings.LoadingConnectingTitle }},
+            loadingWaitingTitle: {{ printf "%q" .Strings.LoadingWaitingTitle }},
+            loadingErrorTitle: {{ printf "%q" .Strings.LoadingErrorTitle }},
+            loadingErrorDetail: {{ printf "%q" .Strings.LoadingErrorDetail }},
+            loadingSessionEndedTitle: {{ printf "%q" .Strings.LoadingSessionEndedTitle }},
+            loadingSessionEndedDetail: {{ printf "%q" .Strings.LoadingSessionEndedDetail }},
+            loadingDisconnectedTitle: {{ printf "%q" .Strings.LoadingDisconnectedTitle }},
+            loadingDisconnectedDetail: {{ printf "%q" .Strings.LoadingDisconnectedDetail }},
+            sessionDetailPrefix: {{ printf "%q" .Strings.SessionDetailPrefix }},
+            retrySessionMessage: {{ printf "%q" .Strings.RetrySessionMessage }},
+            defaultDisconnectReason: {{ printf "%q" .Strings.DefaultDisconnectReason }},
+            desktopDisconnectedMessage: {{ printf "%q" .Strings.DesktopDisconnectedMessage }},
+            qualityExcellent: {{ printf "%q" .Strings.QualityExcellent }},
+            qualityGood: {{ printf "%q" .Strings.QualityGood }},
+            qualityFair: {{ printf "%q" .Strings.QualityFair }},
+            qualityPoor: {{ printf "%q" .Strings.QualityPoor }}
+        };
+
+        function sessionDetailText(id) {
+            return `${ui.sessionDetailPrefix}${id}`;
+        }
+
+        function localizeCloseReason(reason) {
+            if (!reason) {
+                return ui.defaultDisconnectReason;
+            }
+            if (reason.includes('desktop client')) {
+                return ui.desktopDisconnectedMessage;
+            }
+            return reason;
+        }
 
         // 根据页面协议自动选择 WebSocket 协议
         // HTTPS -> WSS, HTTP -> WS
@@ -456,7 +497,7 @@
         let controlHandshakeTimer = null;
         let receivedFrame = false;
         let sessionEnded = false;
-        let lastDisconnectMessage = '连接已断开';
+        let lastDisconnectMessage = ui.defaultDisconnectReason;
 
         // H.264 解码器
         let h264Decoder = null;
@@ -494,6 +535,40 @@
                 clearInterval(controlHandshakeTimer);
                 controlHandshakeTimer = null;
             }
+        }
+
+        function clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        function getCanvasMetrics() {
+            const rect = canvas.getBoundingClientRect();
+            const intrinsicWidth = canvas.width || Math.round(rect.width) || 0;
+            const intrinsicHeight = canvas.height || Math.round(rect.height) || 0;
+
+            return {
+                rect,
+                width: intrinsicWidth,
+                height: intrinsicHeight
+            };
+        }
+
+        function getPointerPayload(event, mouseMask) {
+            const metrics = getCanvasMetrics();
+            const rectWidth = metrics.rect.width || metrics.width || 1;
+            const rectHeight = metrics.rect.height || metrics.height || 1;
+            const scaleX = metrics.width > 0 ? metrics.width / rectWidth : 1;
+            const scaleY = metrics.height > 0 ? metrics.height / rectHeight : 1;
+            const rawX = Math.round((event.clientX - metrics.rect.left) * scaleX);
+            const rawY = Math.round((event.clientY - metrics.rect.top) * scaleY);
+
+            return {
+                mouse_x: clamp(rawX, 0, Math.max(metrics.width-1, 0)),
+                mouse_y: clamp(rawY, 0, Math.max(metrics.height-1, 0)),
+                mouse_mask: mouseMask,
+                canvas_width: metrics.width,
+                canvas_height: metrics.height
+            };
         }
 
         function sendViewerHandshake() {
@@ -572,7 +647,7 @@
 
         async function ensureViewerReady(codec) {
             if (!canvas) {
-                canvas = document.getElementById('vnc_canvas');
+                canvas = document.getElementById('stream_canvas');
             }
 
             if (!ctx) {
@@ -607,7 +682,7 @@
                 useH264 = false;
             }
 
-            setStatus('connected', '串流中');
+            setStatus('connected', ui.statusStreaming);
             hideLoading();
             setStreamChromeHidden(true);
         }
@@ -632,7 +707,7 @@
 
         document.getElementById('retryButton').addEventListener('click', () => {
             sessionEnded = false;
-            lastDisconnectMessage = '正在重新连接会话...';
+            lastDisconnectMessage = ui.retrySessionMessage;
             stopPlaybackState();
             connect();
         });
@@ -651,16 +726,16 @@
 
             if (fps >= 25) {
                 qualityFill.style.width = '100%';
-                qualityText.textContent = '优秀';
+                qualityText.textContent = ui.qualityExcellent;
             } else if (fps >= 15) {
                 qualityFill.style.width = '70%';
-                qualityText.textContent = '良好';
+                qualityText.textContent = ui.qualityGood;
             } else if (fps >= 10) {
                 qualityFill.style.width = '40%';
-                qualityText.textContent = '一般';
+                qualityText.textContent = ui.qualityFair;
             } else {
                 qualityFill.style.width = '20%';
-                qualityText.textContent = '较差';
+                qualityText.textContent = ui.qualityPoor;
             }
 
             // 重置计数
@@ -1048,9 +1123,9 @@
         function connect() {
             clearReconnectTimer();
             sessionEnded = false;
-            setStatus('connecting', '连接中...');
+            setStatus('connecting', ui.statusConnecting);
             setStreamChromeHidden(false);
-            showLoading('正在连接到远程桌面...', `会话 ID：${sessionId}`);
+            showLoading(ui.loadingConnectingTitle, sessionDetailText(sessionId));
             document.getElementById('sessionId').textContent = sessionId.substring(0, 8);
 
             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -1060,8 +1135,8 @@
             ws = new WebSocket(wsURL);
 
             ws.onopen = () => {
-                setStatus('connecting', '等待客户端...');
-                showLoading('等待桌面客户端接入...', `会话 ID：${sessionId}`);
+                setStatus('connecting', ui.statusWaitingClient);
+                showLoading(ui.loadingWaitingTitle, sessionDetailText(sessionId));
                 startControlHandshake();
             };
 
@@ -1076,9 +1151,9 @@
 
             ws.onerror = (error) => {
                 console.error('WebSocket错误:', error);
-                setStatus('error', '连接错误');
+                setStatus('error', ui.statusError);
                 setStreamChromeHidden(false);
-                showLoading('连接出现问题', '与 Relay 的连接出现错误，请检查网络或稍后重试。', true);
+                showLoading(ui.loadingErrorTitle, ui.loadingErrorDetail, true);
             };
 
             ws.onclose = (event) => {
@@ -1087,19 +1162,19 @@
                 if (!sessionEnded && event && typeof event.reason === 'string' &&
                     event.reason.includes('desktop client')) {
                     sessionEnded = true;
-                    lastDisconnectMessage = '桌面客户端已断开，会话已结束。请重新启动 CLI 后再连接。';
+                    lastDisconnectMessage = ui.desktopDisconnectedMessage;
                 }
 
                 if (sessionEnded) {
-                    setStatus('disconnected', '会话已结束');
-                    showLoading('桌面客户端已断开', lastDisconnectMessage || '当前会话已经结束，请重新启动 CLI 后再连接。', true);
+                    setStatus('disconnected', ui.statusSessionEnded);
+                    showLoading(ui.loadingSessionEndedTitle, lastDisconnectMessage || ui.loadingSessionEndedDetail, true);
                     return;
                 }
 
-                const closeReason = event && event.reason ? event.reason : '连接已断开';
+                const closeReason = event && event.reason ? localizeCloseReason(event.reason) : ui.defaultDisconnectReason;
                 lastDisconnectMessage = closeReason;
-                setStatus('disconnected', '连接已断开');
-                showLoading('连接已断开', '正在尝试重新连接远程桌面...', true);
+                setStatus('disconnected', ui.statusDisconnected);
+                showLoading(ui.loadingDisconnectedTitle, ui.loadingDisconnectedDetail, true);
                 scheduleReconnect(5000);
             };
         }
@@ -1162,10 +1237,10 @@
 
                 case 'session_ended':
                     sessionEnded = true;
-                    lastDisconnectMessage = data.message || '桌面客户端已断开，会话已结束。';
+                    lastDisconnectMessage = ui.desktopDisconnectedMessage;
                     stopPlaybackState();
-                    setStatus('disconnected', '会话已结束');
-                    showLoading('桌面客户端已断开', lastDisconnectMessage, true);
+                    setStatus('disconnected', ui.statusSessionEnded);
+                    showLoading(ui.loadingSessionEndedTitle, lastDisconnectMessage, true);
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.close();
                     }
@@ -1200,9 +1275,11 @@
                 return;
             }
 
+            const metrics = getCanvasMetrics();
+
             sendInput('canvas_size', {
-                canvas_width: canvas.clientWidth,
-                canvas_height: canvas.clientHeight
+                canvas_width: metrics.width,
+                canvas_height: metrics.height
             });
         }
 
@@ -1225,13 +1302,7 @@
                 if (!document.getElementById('controlToggle').checked) return;
 
                 mouseButtonMask |= (1 << e.button);
-                sendInput('mouse', {
-                    mouse_x: e.offsetX,
-                    mouse_y: e.offsetY,
-                    mouse_mask: mouseButtonMask,
-                    canvas_width: canvas.clientWidth,
-                    canvas_height: canvas.clientHeight
-                });
+                sendInput('mouse', getPointerPayload(e, mouseButtonMask));
             });
 
             canvas.addEventListener('mouseup', (e) => {
@@ -1239,26 +1310,14 @@
                 if (!document.getElementById('controlToggle').checked) return;
 
                 mouseButtonMask &= ~(1 << e.button);
-                sendInput('mouse', {
-                    mouse_x: e.offsetX,
-                    mouse_y: e.offsetY,
-                    mouse_mask: mouseButtonMask,
-                    canvas_width: canvas.clientWidth,
-                    canvas_height: canvas.clientHeight
-                });
+                sendInput('mouse', getPointerPayload(e, mouseButtonMask));
             });
 
             canvas.addEventListener('mousemove', (e) => {
                 e.preventDefault();
                 if (!document.getElementById('controlToggle').checked) return;
 
-                sendInput('mouse', {
-                    mouse_x: e.offsetX,
-                    mouse_y: e.offsetY,
-                    mouse_mask: mouseButtonMask,
-                    canvas_width: canvas.clientWidth,
-                    canvas_height: canvas.clientHeight
-                });
+                sendInput('mouse', getPointerPayload(e, mouseButtonMask));
             });
 
             // 防止右键菜单
@@ -1271,7 +1330,7 @@
                 e.preventDefault();
                 if (!document.getElementById('controlToggle').checked) return;
 
-                // VNC滚轮掩码：向上=8，向下=16
+                // Wheel mask: up=8, down=16
                 let scrollMask = 0;
                 if (e.deltaY < 0) {
                     scrollMask = 8;
@@ -1279,23 +1338,11 @@
                     scrollMask = 16;
                 }
 
-                sendInput('mouse', {
-                    mouse_x: e.offsetX,
-                    mouse_y: e.offsetY,
-                    mouse_mask: mouseButtonMask | scrollMask,
-                    canvas_width: canvas.clientWidth,
-                    canvas_height: canvas.clientHeight
-                });
+                sendInput('mouse', getPointerPayload(e, mouseButtonMask | scrollMask));
 
                 // 发送滚轮复位
                 setTimeout(() => {
-                    sendInput('mouse', {
-                        mouse_x: e.offsetX,
-                        mouse_y: e.offsetY,
-                        mouse_mask: mouseButtonMask,
-                        canvas_width: canvas.clientWidth,
-                        canvas_height: canvas.clientHeight
-                    });
+                    sendInput('mouse', getPointerPayload(e, mouseButtonMask));
                 }, 100);
             });
         }

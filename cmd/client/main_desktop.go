@@ -108,7 +108,7 @@ func main() {
 	fps := flag.Int("fps", 0, "帧率 (0=使用配置文件默认值)")
 	quality := flag.Int("quality", 0, "JPEG 质量 (1-100, 0=使用配置文件默认值)")
 	sessionID := flag.String("session", "", "会话ID（留空自动生成或使用配置文件）")
-	codec := flag.String("codec", "", "编码格式 (jpeg/h264, 畺空使用配置文件默认值)")
+	codec := flag.String("codec", "", "编码格式 (jpeg/h264, 留空使用配置文件默认值)")
 	h264Bitrate := flag.Int("h264-bitrate", 0, "H.264 比特率 (Kbps, 0=使用配置文件默认值)")
 	flag.Parse()
 
@@ -144,12 +144,10 @@ func main() {
 		log.Printf("🎬 初始化 H.264 编码器...")
 		capture.h264Encoder = NewH264Encoder()
 
-		// 注意：编码器在第一帧捕获时初始化（需要知道实际分辨率）
 		if capture.h264Encoder.IsHardwareAccelerated() {
 			log.Printf("✅ 使用硬件 H.264 编码器")
 		} else {
-			log.Printf("⚠️  硬件编码不可用，回退到 JPEG")
-			capture.useH264 = false
+			log.Printf("ℹ️  使用软件/平台自适应 H.264 编码器")
 		}
 	}
 
@@ -196,7 +194,7 @@ func printHeader(sessionID, configPath, serverURL string, display, fps, quality 
 func getWebURL(wsURL string) string {
 	// 提取主机名部分
 	// wss://deskgo.zty8.cn/api/desktop -> deskgo.zty8.cn
-	// ws://localhost:8080/api/desktop -> localhost:8080
+	// ws://localhost:8082/api/desktop -> localhost:8082
 
 	if len(wsURL) >= 3 {
 		var protocol string
@@ -613,8 +611,15 @@ func (c *DesktopCapture) handleControlEvent(event *ControlEvent) {
 }
 
 func (c *DesktopCapture) handleMouseEvent(event *ControlEvent) {
+	if event.CanvasWidth > 0 && event.CanvasHeight > 0 {
+		c.mu.Lock()
+		c.canvasWidth = event.CanvasWidth
+		c.canvasHeight = event.CanvasHeight
+		c.mu.Unlock()
+	}
+
 	// 映射坐标：Canvas → 屏幕
-	screenX, screenY := c.mapCoordsToScreen(event.MouseX, event.MouseY)
+	screenX, screenY := c.mapCoordsToScreen(event.MouseX, event.MouseY, event.CanvasWidth, event.CanvasHeight)
 
 	// 移动鼠标
 	if err := c.moveMouse(screenX, screenY); err != nil {
@@ -629,10 +634,13 @@ func (c *DesktopCapture) handleMouseEvent(event *ControlEvent) {
 
 func (c *DesktopCapture) handleKeyboardEvent(event *ControlEvent) {
 	jsKeyCode := event.KeyCode
+	if jsKeyCode < 0 {
+		jsKeyCode = -jsKeyCode
+	}
 
 	platformKeyCode := mapJSKeyCodeToPlatformKeyCode(jsKeyCode)
 	if platformKeyCode == -1 {
-		log.Printf("⚠️  未映射的按键: JS keyCode=%d", jsKeyCode)
+		log.Printf("⚠️  未映射的按键或当前平台输入不可用: JS keyCode=%d", jsKeyCode)
 		return
 	}
 
@@ -647,12 +655,16 @@ func (c *DesktopCapture) handleKeyboardEvent(event *ControlEvent) {
 }
 
 // mapCoordsToScreen 将Canvas坐标映射到屏幕坐标
-func (c *DesktopCapture) mapCoordsToScreen(canvasX, canvasY int) (int, int) {
+func (c *DesktopCapture) mapCoordsToScreen(canvasX, canvasY, canvasW, canvasH int) (int, int) {
 	c.mu.Lock()
-	canvasW := c.canvasWidth
-	canvasH := c.canvasHeight
 	screenW := c.width
 	screenH := c.height
+	if canvasW <= 0 {
+		canvasW = c.canvasWidth
+	}
+	if canvasH <= 0 {
+		canvasH = c.canvasHeight
+	}
 	c.mu.Unlock()
 
 	// 如果没有Canvas尺寸，直接返回原坐标（旧版本兼容）

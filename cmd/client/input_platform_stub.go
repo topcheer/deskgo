@@ -1,5 +1,5 @@
-//go:build desktop && !darwin && !windows
-// +build desktop,!darwin,!windows
+//go:build desktop && !darwin && !windows && !linux
+// +build desktop,!darwin,!windows,!linux
 
 package main
 

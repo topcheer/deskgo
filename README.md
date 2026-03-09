@@ -1,158 +1,137 @@
-# DeskGo - 跨平台远程桌面解决方案
+# DeskGo
 
-[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://golang.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Platforms](https://img.shields.io/badge/platforms-30-blue)](#-支持的平台)
+DeskGo 是一个以 Go 编写的远程桌面串流方案，包含 Desktop CLI、Relay 服务器和浏览器查看器三部分。
+当前仓库已经完成遗留实验代码清理，聚焦在原生桌面采集、WebSocket 中继、浏览器查看与多架构发布。
 
-基于Go和WebSocket的跨平台远程桌面解决方案，支持VNC和RDP协议。
+- 上游仓库：<https://github.com/topcheer/deskgo>
+- 英文文档：[`README.en.md`](README.en.md)
+- 构建矩阵：[`docs/BUILD_MATRIX.md`](docs/BUILD_MATRIX.md)
+- 部署指南：[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+- 首个 Release Note 草案：[`docs/releases/v0.1.0.zh-CN.md`](docs/releases/v0.1.0.zh-CN.md)
 
-## ✨ 核心特性
+## 核心能力
 
-- 🌍 **跨平台支持**：30个操作系统和架构（Windows、Linux、macOS、*BSD等）
-- ⚡ **低延迟**：WebSocket实时通信，毫秒级响应
-- 🔒 **安全连接**：端到端加密通信，支持HTTPS/WSS
-- 🖥️ **VNC支持**：完整的VNC协议支持（RFB）
-- 🪟 **RDP支持**：支持Windows远程桌面协议
-- 🚀 **开箱即用**：Docker一键部署，无需复杂配置
-- 🎨 **现代Web界面**：基于noVNC的专业远程桌面UI
-- 💓 **心跳保活**：双向心跳机制，自动重连和死连接清理
-- 👥 **多会话支持**：同时管理多个远程桌面连接
+### Desktop CLI
 
-## 🏗️ 系统架构
+- macOS：默认优先 H.264，支持原生桌面捕获
+- Linux：默认优先 H.264（检测到 ffmpeg/libx264 时启用），支持 X11/XTEST 输入控制
+- Windows：保持与 macOS 接近的一致会话输出与输入交互体验
 
-```
-CLI客户端              中继服务器              Web浏览器
-┌──────────────┐              ┌──────────┐              ┌─────────────┐
-│ VNC/RDP      │──WebSocket──▶│ 消息转发 │◀──WebSocket──│ noVNC       │
-│ 捕获模块     │              │          │              │ HTML5 Canvas│
-│              │              │          │              │             │
-│ 30个平台     │              │          │              │ 键盘/鼠标   │
-└──────────────┘              └──────────┘              └─────────────┘
-```
+### Relay Server
 
-**核心特点**：
-- ✅ **真实VNC/RDP**：CLI客户端提供完整的远程桌面连接
-- ✅ **消息转发**：中继服务器负责WebSocket消息路由
-- ✅ **独立界面**：Web界面基于noVNC，支持任意浏览器
-- ✅ **无状态设计**：内存中维护会话，无需数据库依赖
-- ✅ **开箱即用**：单容器部署，无需复杂配置
+- 负责桌面端与浏览器端之间的 WebSocket 会话转发
+- 网站首页与会话页直接由 Relay 提供
+- 自动从 `downloads/` 目录暴露多架构下载产物
+- CLI 断开时会主动通知查看器并关闭连接
 
-## 🌍 支持的平台
+### Web Viewer
 
-### Windows (2个)
-- Windows amd64 (Intel/AMD 64位)
-- Windows arm64 (Surface Pro X等ARM设备)
+- H.264 / JPEG 自动协商
+- 串流开始时自动隐藏页头页尾
+- 中英双语入口：`/`、`/en`、`/session/:id`、`/en/session/:id`
 
-### Linux (13个)
-- Linux amd64 (Ubuntu、Debian、CentOS等64位系统)
-- Linux arm64 (树莓派4/5、ARM服务器)
-- Linux 386 (32位x86系统)
-- Linux arm (树莓派等32位ARM设备)
-- Linux armbe (ARM64 Big-Endian)
-- Linux ppc64le (PowerPC Little-Endian)
-- Linux ppc64 (PowerPC Big-Endian)
-- Linux riscv64 (RISC-V架构)
-- Linux s390x (IBM System z大型机)
-- Linux mips (MIPS 32-bit)
-- Linux mips64le (MIPS 64-bit Little-Endian)
-- Linux mips64 (MIPS 64-bit Big-Endian)
-- Linux loong64 (LoongArch)
+## 快速开始
 
-### *BSD系统 (12个)
-- FreeBSD amd64/arm64/386/arm/riscv64
-- OpenBSD amd64/arm64
-- NetBSD amd64/arm64/arm/386
-- DragonFlyBSD amd64
-
-### macOS (2个)
-- macOS Intel (Intel处理器)
-- macOS ARM (Apple M1/M2/M3/M4)
-
-## 🚀 快速开始
-
-### 方法一：Docker Compose部署（推荐）
+### 1. 从源码构建
 
 ```bash
-# 1. 克隆仓库
-git clone https://github.com/deskgo/deskgo.git
+git clone https://github.com/topcheer/deskgo.git
 cd deskgo
-
-# 2. 启动服务
-docker-compose up -d
-
-# 3. 访问Web界面
-open http://localhost:8082
+./build.sh
 ```
 
-### 方法二：从源码构建
+构建完成后将得到：
+
+- 当前平台运行文件：`bin/relay-server`、`bin/deskgo-desktop*`
+- 多架构下载包：`downloads/`
+- 校验文件：`downloads/SHA256SUMS.txt`
+
+### 2. 启动 Relay
 
 ```bash
-# 1. 克隆仓库
-git clone https://github.com/deskgo/deskgo.git
-cd deskgo
-
-# 2. 构建中继服务器
-go build -o relay-server ./cmd/relay
-
-# 3. 运行中继服务器
-export RELAY_HOST=0.0.0.0
-export RELAY_PORT=8080
-./relay-server
+./bin/relay-server
 ```
 
-## 📥 客户端安装
+默认访问地址：
 
-### 连接到VNC服务器
+- 中文首页：<http://localhost:8082>
+- 英文首页：<http://localhost:8082/en>
+- 中文会话页：`/session/<session-id>`
+- 英文会话页：`/en/session/<session-id>`
+
+### 3. 启动 Desktop CLI
+
+macOS：
 
 ```bash
-# 基本用法
-deskgo -server http://localhost:8082 -host 192.168.1.100:5900
-
-# 使用密码认证
-deskgo -server http://localhost:8082 -host 192.168.1.100:5900 -password secret
-
-# 连接到RDP服务器
-deskgo -server http://localhost:8082 -protocol rdp -host 192.168.1.100:3389 -user admin -password pass
+./bin/deskgo-desktop-h264 -server ws://localhost:8082/api/desktop -session demo -codec h264
 ```
 
-## 💻 使用场景
+Linux / Windows：
 
-- **远程办公**：从浏览器安全访问办公电脑
-- **服务器管理**：图形化管理Linux/Windows服务器
-- **技术支持**：远程协助解决技术问题
-- **移动办公**：在手机/平板上操作电脑
-- **多平台管理**：统一管理不同操作系统的电脑
+```bash
+./bin/deskgo-desktop -server ws://localhost:8082/api/desktop -session demo
+```
 
-## 🔧 技术栈
+## Docker 与云部署
 
-- **CLI客户端**：Go 1.24 + VNC/RDP库
-- **中继服务**：Go 1.24 + Gin + WebSocket
-- **Web界面**：noVNC + HTML5 Canvas
-- **部署**：Docker + docker-compose
+### 本地构建镜像
 
-## 📚 文档
+```bash
+docker compose up -d --build
+```
 
-- [快速开始指南](QUICKSTART.md)
-- [VNC配置指南](docs/VNC_SETUP.md)
-- [RDP配置指南](docs/RDP_SETUP.md)
-- [部署指南](docs/DEPLOYMENT.md)
-- [API文档](docs/API.md)
+### 使用预构建镜像部署
 
-## 🤝 贡献指南
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
 
-欢迎提交Issue和Pull Request！
+预构建镜像地址：
 
-## 📄 许可证
+- `ghcr.io/topcheer/deskgo:latest`
 
-MIT License - see [LICENSE](LICENSE) file for details
+说明：
 
-## 🙏 致谢
+- Docker 镜像会打包 Relay 与 `downloads/` 中的发布产物
+- 在 Linux 构建环境中，`./build.sh` 会生成 Linux / Windows Desktop CLI 与多架构 Relay 包
+- 如果希望镜像中也包含 macOS Desktop CLI，请先在 macOS 主机上运行一次 `./build.sh`
+- 云平台部署、反向代理与 Cloudflare Tunnel 说明见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 
-- [noVNC](https://github.com/novnc/noVNC) - HTML5 VNC客户端
-- [gorilla/websocket](https://github.com/gorilla/websocket) - WebSocket库
-- [go-vnc](https://github.com/mitchellh/go-vnc) - Go VNC客户端库
-- [FreeRDP](https://github.com/FreeRDP/FreeRDP) - RDP实现
+## 发布矩阵摘要
 
----
+### Desktop CLI 发布包
 
-**如果DeskGo对你有帮助，请给我们一个⭐️！**
+- macOS：`darwin/amd64`、`darwin/arm64`（仅在 macOS 主机或 GitHub macOS Runner 上构建）
+- Windows：`windows/amd64`、`windows/arm64`
+- Linux：`linux/amd64`、`linux/arm64`、`linux/armv7`、`linux/riscv64`
+
+### Relay 发布包
+
+- macOS：`darwin/amd64`、`darwin/arm64`
+- Windows：`windows/amd64`、`windows/arm64`
+- Linux：`linux/amd64`、`linux/arm64`、`linux/armv7`、`linux/riscv64`、`linux/ppc64le`、`linux/s390x`
+
+更多细节见 [`docs/BUILD_MATRIX.md`](docs/BUILD_MATRIX.md)。
+
+## CI / 发布自动化
+
+仓库包含两套 GitHub Actions：
+
+- `.github/workflows/release-artifacts.yml`：构建多架构 Desktop CLI 与 Relay 产物并上传为 Actions artifacts
+- `.github/workflows/docker-image.yml`：构建并发布多架构 GHCR 镜像
+
+## 文档索引
+
+- [`README.en.md`](README.en.md)
+- [`docs/BUILD_MATRIX.md`](docs/BUILD_MATRIX.md)
+- [`docs/BUILD_MATRIX.en.md`](docs/BUILD_MATRIX.en.md)
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+- [`docs/DEPLOYMENT.en.md`](docs/DEPLOYMENT.en.md)
+- [`docs/releases/v0.1.0.zh-CN.md`](docs/releases/v0.1.0.zh-CN.md)
+- [`docs/releases/v0.1.0.md`](docs/releases/v0.1.0.md)
+
+## 许可证
+
+本项目采用 MIT License，允许免费商业使用、修改、分发和再发布。
+详见 [`LICENSE`](LICENSE)。

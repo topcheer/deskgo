@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeskGo Relay - 现代远程桌面接入</title>
+    <title>DeskGo Relay - 多架构远程桌面接入</title>
     <style>
         :root {
             color-scheme: light;
@@ -589,6 +589,57 @@
             box-shadow: 0 16px 32px rgba(5, 150, 105, 0.22);
         }
 
+        .download-section {
+            display: grid;
+            gap: 20px;
+        }
+
+        .download-section + .download-section {
+            margin-top: 28px;
+        }
+
+        .download-section-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .download-section-head h3 {
+            margin: 0 0 10px;
+            font-size: 1.15rem;
+        }
+
+        .download-section-head p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.7;
+            max-width: 72ch;
+        }
+
+        .download-actions {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .download-actions .download-link {
+            margin-top: 0;
+            width: auto;
+            min-width: 118px;
+        }
+
+        .download-empty {
+            padding: 22px 24px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.76);
+            border: 1px dashed rgba(99, 102, 241, 0.2);
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
         .features-grid {
             grid-template-columns: repeat(3, minmax(0, 1fr));
         }
@@ -724,43 +775,45 @@
                 <span class="brand-mark" aria-hidden="true"></span>
                 <div class="brand-copy">
                     <span>DeskGo Relay</span>
-                    <strong>现代远程桌面接入</strong>
+                    <strong>多架构远程桌面接入</strong>
                 </div>
             </div>
             <nav class="nav" aria-label="主导航">
                 <a href="#session">连接会话</a>
-                <a href="#downloads">客户端下载</a>
+                <a href="#downloads">构建下载</a>
                 <a href="#features">核心能力</a>
                 <a href="#steps">接入流程</a>
-                <a href="https://github.com/deskgo/deskgo" class="ghost-button">查看文档</a>
+                <a href="https://github.com/topcheer/deskgo/blob/main/README.md" class="ghost-button">查看文档</a>
+                <a href="/en" class="ghost-button" lang="en">English</a>
             </nav>
         </header>
 
         <main>
             <section class="hero">
                 <div class="hero-card hero-copy">
-                    <span class="eyebrow">实时串流 / Relay / Web Viewer</span>
-                    <h1>让远程桌面接入更轻、更稳、更易部署。</h1>
+                    <span class="eyebrow">Desktop CLI / Relay / Bilingual Web</span>
+                    <h1>一次构建，覆盖更多桌面终端与 Relay 部署架构。</h1>
                     <p>
-                        DeskGo Relay 为桌面 CLI、浏览器查看器和会话接入流程提供统一入口。
-                        现在可以直接在站点内输入会话 ID、下载打包好的 CLI，并获得更清晰的会话断开提示与串流体验。
+                        DeskGo Relay 现在同时提供三大桌面操作系统的多架构 CLI、
+                        更丰富的 Relay 服务器二进制，以及中英双语网站入口。
+                        下载区会根据当前产物目录自动列出可用构建，并附带 SHA256 校验文件。
                     </p>
                     <div class="hero-actions">
                         <a href="#session" class="primary-button">立即连接会话</a>
-                        <a href="#downloads" class="ghost-button">下载 Windows / Linux CLI</a>
+                        <a href="#downloads" class="ghost-button">查看 CLI / Relay 构建</a>
                     </div>
                     <div class="stats" aria-label="关键指标">
                         <div class="stat-card">
-                            <strong>H.264 / JPEG</strong>
-                            <span>浏览器自动协商解码，客户端按平台能力回退。</span>
+                            <strong>{{ .DesktopArtifactCount }} 个 CLI 构建</strong>
+                            <span>覆盖 macOS、Windows、Linux 的多架构桌面客户端发布包。</span>
                         </div>
                         <div class="stat-card">
-                            <strong>Docker Ready</strong>
-                            <span>Relay 镜像内直接打包 CLI 下载物，部署后即可分发。</span>
+                            <strong>{{ .RelayArtifactCount }} 个 Relay 构建</strong>
+                            <span>适用于 Intel、ARM、RISC-V 以及常见 Linux 服务器架构。</span>
                         </div>
                         <div class="stat-card">
-                            <strong>Windows Friendly</strong>
-                            <span>Windows CLI 维持与 macOS 一致的连接与提示体验。</span>
+                            <strong>中文 / English</strong>
+                            <span>首页与会话页面都提供英文入口，方便跨团队分发与支持。</span>
                         </div>
                     </div>
                 </div>
@@ -775,8 +828,8 @@
                         </div>
                         <div class="window-body">
                             <div class="preview-toolbar">
-                                <div class="preview-chip"><span class="dot"></span> H.264 Ready</div>
-                                <div class="preview-chip">Windows CLI Included</div>
+                                <div class="preview-chip"><span class="dot"></span> {{ .DesktopArtifactCount }} CLI Builds</div>
+                                <div class="preview-chip">{{ .RelayArtifactCount }} Relay Builds</div>
                             </div>
                             <div class="preview-grid">
                                 <div class="preview-stage">
@@ -789,9 +842,9 @@
                                     </div>
                                 </div>
                                 <div class="preview-panel">
-                                    <div class="panel-row">会话接入状态、串流质量、客户端平台一目了然。</div>
-                                    <div class="panel-row">CLI 断开后自动提示并关闭查看器连接。</div>
-                                    <div class="panel-row">串流中自动隐藏页头页尾，专注查看桌面。</div>
+                                    <div class="panel-row">网站按当前产物目录自动列出 CLI 与 Relay 的可下载架构。</div>
+                                    <div class="panel-row">会话页支持中英双语，并在 CLI 断开时主动提示与关闭连接。</div>
+                                    <div class="panel-row">一键构建脚本同时输出下载包与 SHA256SUMS.txt。</div>
                                 </div>
                             </div>
                         </div>
@@ -803,7 +856,7 @@
                 <div class="section-heading">
                     <div>
                         <h2>输入会话 ID，直接进入远程桌面。</h2>
-                        <p>适用于已经启动 CLI 的场景；浏览器将在会话页面等待客户端接入，并在桌面端断开时给出清晰提示。</p>
+                        <p>适用于已经启动 CLI 的场景；如果要使用英文界面，可切换到 <a href="/en">/en</a> 版本并使用相同的会话 ID。</p>
                     </div>
                 </div>
                 <div class="panel session-layout">
@@ -832,68 +885,95 @@
             <section class="section" id="downloads">
                 <div class="section-heading">
                     <div>
-                        <h2>下载打包好的 CLI。</h2>
-                        <p>Docker 镜像内已经包含可分发的 CLI 产物；如果你通过 Relay 部署，站点即可直接提供下载。</p>
+                        <h2>下载多架构构建。</h2>
+                        <p>一键构建脚本会生成 Desktop CLI、Relay 服务器二进制以及 SHA256 校验文件；站点会按当前 downloads 目录自动展示可用构建。</p>
                     </div>
                 </div>
-                <div class="downloads">
-                    <article class="download-card">
-                        <div class="icon-wrap" aria-hidden="true">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                                <path d="M7 4h7l5 5v11H7V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-                                <path d="M14 4v5h5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-                            </svg>
+                <div class="download-section">
+                    <div class="download-section-head">
+                        <div>
+                            <h3>Desktop CLI 发布包</h3>
+                            <p>桌面客户端下载包覆盖三大操作系统，并针对 macOS 原生捕获、Windows 输入体验以及 Linux H.264 默认路径做了平台适配。</p>
                         </div>
-                        <h3>Windows CLI</h3>
-                        <p>保持与 macOS CLI 一致的会话输出和连接流程，默认自动回退到可用编码路径。</p>
-                        <div class="download-meta">
-                            <span class="pill">AMD64</span>
-                            <span class="pill">.exe</span>
-                        </div>
-                        <a class="download-link" href="/downloads/deskgo-desktop-windows-amd64.exe">下载 Windows CLI</a>
-                    </article>
+                        {{ if .HasChecksums }}
+                        <a class="ghost-button" href="{{ .ChecksumURL }}">查看 SHA256 校验</a>
+                        {{ end }}
+                    </div>
+                    {{ if .DesktopDownloads }}
+                    <div class="downloads">
+                        {{ range .DesktopDownloads }}
+                        <article class="download-card">
+                            <div class="icon-wrap" aria-hidden="true">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M7 4h7l5 5v11H7V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                    <path d="M14 4v5h5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <h3>{{ .TitleZH }}</h3>
+                            <p>{{ .DescriptionZH }}</p>
+                            <div class="download-meta">
+                                {{ range .Artifacts }}
+                                <span class="pill">{{ .Arch }}</span>
+                                {{ end }}
+                            </div>
+                            <div class="download-actions">
+                                {{ range .Artifacts }}
+                                <a class="download-link" href="{{ .URL }}">下载 {{ .Arch }}</a>
+                                {{ end }}
+                            </div>
+                        </article>
+                        {{ end }}
+                    </div>
+                    {{ else }}
+                    <div class="download-empty">当前 downloads 目录中还没有 Desktop CLI 构建，请先运行 <code>./build.sh</code>。</div>
+                    {{ end }}
+                </div>
 
-                    <article class="download-card">
-                        <div class="icon-wrap" aria-hidden="true">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                                <path d="M12 4v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                                <path d="M8 10l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M5 18h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                            </svg>
+                <div class="download-section">
+                    <div class="download-section-head">
+                        <div>
+                            <h3>Relay 服务器发布包</h3>
+                            <p>Relay 二进制扩展到更多服务器架构，适合本地部署、边缘节点、ARM 主机以及异构 Linux 服务器集群。</p>
                         </div>
-                        <h3>Linux CLI</h3>
-                        <p>适合容器或远程主机分发；和 Relay 一起打包到镜像中，部署后即可获取二进制。</p>
-                        <div class="download-meta">
-                            <span class="pill">AMD64</span>
-                            <span class="pill">Static Build</span>
-                        </div>
-                        <a class="download-link" href="/downloads/deskgo-desktop-linux-amd64">下载 Linux CLI</a>
-                    </article>
-
-                    <article class="download-card">
-                        <div class="icon-wrap" aria-hidden="true">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                                <path d="M12 3l7 4v10l-7 4-7-4V7l7-4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-                                <path d="M12 7v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                                <path d="M8 9.5l4 2.5 4-2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </div>
-                        <h3>接入指南</h3>
-                        <p>查看完整源码、部署说明和平台兼容情况，适合自定义构建与集成使用。</p>
-                        <div class="download-meta">
-                            <span class="pill">Docs</span>
-                            <span class="pill">GitHub</span>
-                        </div>
-                        <a class="download-link" href="https://github.com/deskgo/deskgo">查看项目文档</a>
-                    </article>
+                        <a class="ghost-button" href="https://github.com/topcheer/deskgo/blob/main/docs/BUILD_MATRIX.md">查看架构说明</a>
+                    </div>
+                    {{ if .RelayDownloads }}
+                    <div class="downloads">
+                        {{ range .RelayDownloads }}
+                        <article class="download-card">
+                            <div class="icon-wrap" aria-hidden="true">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 3l7 4v10l-7 4-7-4V7l7-4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                    <path d="M12 7v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    <path d="M8 9.5l4 2.5 4-2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <h3>{{ .TitleZH }}</h3>
+                            <p>{{ .DescriptionZH }}</p>
+                            <div class="download-meta">
+                                {{ range .Artifacts }}
+                                <span class="pill">{{ .Arch }}</span>
+                                {{ end }}
+                            </div>
+                            <div class="download-actions">
+                                {{ range .Artifacts }}
+                                <a class="download-link" href="{{ .URL }}">下载 {{ .Arch }}</a>
+                                {{ end }}
+                            </div>
+                        </article>
+                        {{ end }}
+                    </div>
+                    {{ else }}
+                    <div class="download-empty">当前 downloads 目录中还没有 Relay 服务器构建，请先运行 <code>./build.sh</code>。</div>
+                    {{ end }}
                 </div>
             </section>
 
             <section class="section" id="features">
                 <div class="section-heading">
                     <div>
-                        <h2>围绕稳定串流和一致体验做的核心优化。</h2>
-                        <p>从浏览器断线提示、串流页面布局，到 Docker 产物和 Windows CLI 一致性，DeskGo Relay 现在更像一个可交付的平台入口。</p>
+                        <h2>围绕发布矩阵、交付体验与双语支持做的优化。</h2>
+                        <p>这次更新不仅扩展了多架构构建，也把网站、构建脚本和核心文档统一到同一套发布入口。</p>
                     </div>
                 </div>
                 <div class="features-grid">
@@ -904,12 +984,12 @@
                                 <path d="M12 5v14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                             </svg>
                         </div>
-                        <h3>断线感知更明确</h3>
-                        <p>CLI 会话结束时，Relay 主动通知并关闭查看器连接，避免 Web 端停留在无响应状态。</p>
+                        <h3>发布矩阵更完整</h3>
+                        <p>Desktop CLI 现在覆盖 macOS、Windows、Linux 的更多架构；Relay 服务器则进一步扩展到常见 Linux 服务器平台。</p>
                         <ul>
-                            <li>断开即提示</li>
-                            <li>区分会话结束与网络问题</li>
-                            <li>支持手动重连</li>
+                            <li>三大桌面系统多架构发布</li>
+                            <li>Relay 面向服务器架构扩展</li>
+                            <li>下载清单随构建自动更新</li>
                         </ul>
                     </article>
                     <article class="feature-card">
@@ -919,12 +999,12 @@
                                 <path d="M7 4h10v16H7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
                             </svg>
                         </div>
-                        <h3>串流视图更专注</h3>
-                        <p>开始串流后自动隐藏页头与页尾，把更多空间留给桌面内容；错误或断开时再恢复状态信息。</p>
+                        <h3>网站双语更完整</h3>
+                        <p>首页与会话页面都增加了英文版本，便于为国际团队、测试人员和外部协作方提供统一入口。</p>
                         <ul>
-                            <li>观看区域最大化</li>
-                            <li>状态栏自动恢复</li>
-                            <li>减少操作干扰</li>
+                            <li>中文 / English 首页切换</li>
+                            <li>英文会话页面可直接使用</li>
+                            <li>下载说明与构建矩阵同步展示</li>
                         </ul>
                     </article>
                     <article class="feature-card">
@@ -934,12 +1014,12 @@
                                 <path d="M9 17v3M15 17v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                             </svg>
                         </div>
-                        <h3>跨平台分发更顺手</h3>
-                        <p>Docker 镜像内同时产出 Relay 和 CLI 下载物，Windows CLI 与 macOS 维持统一会话启动体验。</p>
+                        <h3>一键构建更适合分发</h3>
+                        <p><code>./build.sh</code> 会同时生成当前平台运行文件、跨架构下载包以及 SHA256 校验文件，方便直接分发或打包进 Relay 镜像。</p>
                         <ul>
-                            <li>镜像内含下载产物</li>
-                            <li>Windows 构建可验证</li>
-                            <li>CLI 行为更一致</li>
+                            <li>CLI 与 Relay 同步打包</li>
+                            <li>校验文件自动输出</li>
+                            <li>Docker 可直接承载下载目录</li>
                         </ul>
                     </article>
                 </div>
@@ -948,25 +1028,25 @@
             <section class="section" id="steps">
                 <div class="section-heading">
                     <div>
-                        <h2>三步完成接入。</h2>
-                        <p>无论是本地调试还是 Docker 部署，都可以沿用同一套操作路径。</p>
+                        <h2>三步完成构建与接入。</h2>
+                        <p>无论你要分发客户端还是部署 Relay，都可以沿用同一套构建与访问路径。</p>
                     </div>
                 </div>
                 <div class="steps-grid">
                     <article class="step-card">
                         <span class="step-index">1</span>
-                        <h3>部署 Relay</h3>
-                        <p>通过 Docker 或本地二进制启动 Relay，获得 Web 界面、会话页和 CLI 下载入口。</p>
+                        <h3>运行构建脚本</h3>
+                        <p>执行 <code>./build.sh</code>，生成当前平台运行文件、Desktop CLI 下载包、Relay 发布包与 SHA256SUMS.txt。</p>
                     </article>
                     <article class="step-card">
                         <span class="step-index">2</span>
-                        <h3>启动 CLI</h3>
-                        <p>在桌面主机上运行 CLI，终端会输出会话 ID、串流编码状态和访问链接。</p>
+                        <h3>部署 Relay</h3>
+                        <p>启动本地二进制或 Docker 镜像；站点会自动从 downloads 目录提供可下载构建，并支持 / 和 /en 两个入口。</p>
                     </article>
                     <article class="step-card">
                         <span class="step-index">3</span>
-                        <h3>浏览器接入</h3>
-                        <p>输入会话 ID 或直接打开访问链接，查看器会自动协商编码并进入串流模式。</p>
+                        <h3>启动 CLI 并分享链接</h3>
+                        <p>在桌面主机上运行对应架构的 CLI，随后通过会话 ID 或访问链接进入浏览器查看器。</p>
                     </article>
                 </div>
             </section>
@@ -974,18 +1054,18 @@
 
         <footer class="footer-grid">
             <section class="footer-card">
-                <h3>为团队分发而设计</h3>
-                <p>Relay 不只是会话转发器，它同时承担站点入口、客户端下载与浏览器查看体验的统一交付。</p>
+                <h3>为发布与分发而设计</h3>
+                <p>Relay 不只是会话转发器，它还承担多架构下载入口、双语页面以及浏览器查看体验的统一交付。</p>
                 <div class="footer-links">
-                    <a href="/downloads/deskgo-desktop-windows-amd64.exe">Windows CLI</a>
-                    <a href="/downloads/deskgo-desktop-linux-amd64">Linux CLI</a>
-                    <a href="https://github.com/deskgo/deskgo">GitHub</a>
+                    <a href="#downloads">下载矩阵</a>
+                    <a href="https://github.com/topcheer/deskgo/blob/main/README.md">README</a>
+                    <a href="https://github.com/topcheer/deskgo/blob/main/README.en.md">README EN</a>
                 </div>
             </section>
             <section class="footer-card">
                 <h3>部署提示</h3>
-                <p>如果你通过 Docker 启动 Relay，本站点提供的下载链接会直接指向镜像中打包好的 CLI 产物。</p>
-                <p class="fineprint">DeskGo Relay · 现代远程桌面接入层 · H.264 / JPEG 自动协商</p>
+                <p>如果你通过 Docker 打包 Relay，镜像中的 downloads 目录会被直接用于站点下载；在 macOS 主机先运行一次 <code>./build.sh</code>，还能把 macOS CLI 一并带入镜像。</p>
+                <p class="fineprint">DeskGo Relay · 多架构发布入口 · H.264 / JPEG 自动协商 · 中英双语站点</p>
             </section>
         </footer>
     </div>
@@ -1000,7 +1080,7 @@
                 return;
             }
 
-            window.location.href = `/session/${encodeURIComponent(sessionId)}`;
+            window.location.href = `{{ .SessionBasePath }}/${encodeURIComponent(sessionId)}`;
         });
     </script>
 </body>

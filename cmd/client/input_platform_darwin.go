@@ -42,6 +42,12 @@ void execKeyTap(int keycode) {
     CGEventPost(kCGHIDEventTap, keyUp);
     CFRelease(keyUp);
 }
+
+void execKeyToggle(int keycode, bool down) {
+    CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, (CGKeyCode)keycode, down);
+    CGEventPost(kCGHIDEventTap, keyEvent);
+    CFRelease(keyEvent);
+}
 */
 import "C"
 
@@ -66,10 +72,8 @@ func platformKeyTap(keycode int) error {
 }
 
 func platformKeyToggle(keycode int, down bool) error {
-	if !down {
-		return nil
-	}
-	return platformKeyTap(keycode)
+	C.execKeyToggle(C.int(keycode), C.bool(down))
+	return nil
 }
 
 func mapJSKeyCodeToPlatformKeyCode(jsKeyCode int) int {

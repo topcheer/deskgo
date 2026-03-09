@@ -4,7 +4,7 @@ FROM golang:1.24-alpine AS builder
 WORKDIR /app
 
 # 安装构建依赖
-RUN apk add --no-cache git gcc musl-dev
+RUN apk add --no-cache bash git gcc musl-dev
 
 # 复制go mod文件
 COPY go.mod go.sum ./
@@ -13,11 +13,11 @@ RUN go mod download
 # 复制源代码
 COPY . .
 
-# 编译中继服务器和 CLI 下载包
-RUN mkdir -p /out/downloads \
-    && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /out/relay-server ./cmd/relay \
-    && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -tags desktop -o /out/downloads/deskgo-desktop-linux-amd64 ./cmd/client \
-    && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -a -installsuffix cgo -tags desktop -o /out/downloads/deskgo-desktop-windows-amd64.exe ./cmd/client
+# 编译中继服务器和多架构下载包
+RUN mkdir -p /out \
+    && bash ./build.sh \
+    && cp bin/relay-server /out/relay-server \
+    && cp -R downloads /out/downloads
 
 # 最终镜像
 FROM alpine:latest

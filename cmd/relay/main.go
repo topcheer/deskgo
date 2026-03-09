@@ -6,14 +6,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/deskgo/deskgo/internal/relay"
 	"github.com/gin-gonic/gin"
+	"github.com/topcheer/deskgo/internal/relay"
 )
 
 func main() {
 	// 从环境变量读取配置
 	host := getEnv("RELAY_HOST", "0.0.0.0")
-	port := getEnv("RELAY_PORT", "8080")
+	port := getEnv("RELAY_PORT", "8082")
 
 	// 获取项目目录
 	projectDir := getProjectDir()
@@ -31,8 +31,9 @@ func main() {
 	router.LoadHTMLGlob(templatePath)
 
 	// 静态文件服务
-	router.Static("/lib", filepath.Join(webDir, "lib"))
-	router.StaticFile("/favicon.ico", filepath.Join(webDir, "favicon.ico"))
+	if _, err := os.Stat(filepath.Join(webDir, "favicon.ico")); err == nil {
+		router.StaticFile("/favicon.ico", filepath.Join(webDir, "favicon.ico"))
+	}
 	if _, err := os.Stat(downloadsDir); err == nil {
 		router.Static("/downloads", downloadsDir)
 		log.Printf("📦 Downloads 目录: %s", downloadsDir)
@@ -40,17 +41,29 @@ func main() {
 
 	// 首页路由
 	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", nil)
+		downloads := collectSiteDownloads(downloadsDir)
+		c.HTML(http.StatusOK, "index.html", gin.H{
+			"DesktopDownloads":     downloads.DesktopDownloads,
+			"RelayDownloads":       downloads.RelayDownloads,
+			"DesktopArtifactCount": downloads.DesktopArtifactCount,
+			"RelayArtifactCount":   downloads.RelayArtifactCount,
+			"HasChecksums":         downloads.HasChecksums,
+			"ChecksumURL":          downloads.ChecksumURL,
+			"SessionBasePath":      "/session",
+		})
 	})
 
-	// 调试页面路由
-	router.GET("/debug", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "debug.html", nil)
-	})
-
-	// 诊断页面路由
-	router.GET("/diagnose", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "diagnose.html", nil)
+	router.GET("/en", func(c *gin.Context) {
+		downloads := collectSiteDownloads(downloadsDir)
+		c.HTML(http.StatusOK, "index_en.html", gin.H{
+			"DesktopDownloads":     downloads.DesktopDownloads,
+			"RelayDownloads":       downloads.RelayDownloads,
+			"DesktopArtifactCount": downloads.DesktopArtifactCount,
+			"RelayArtifactCount":   downloads.RelayArtifactCount,
+			"HasChecksums":         downloads.HasChecksums,
+			"ChecksumURL":          downloads.ChecksumURL,
+			"SessionBasePath":      "/en/session",
+		})
 	})
 
 	// 会话页面路由
@@ -58,6 +71,17 @@ func main() {
 		sessionID := c.Param("session_id")
 		c.HTML(http.StatusOK, "desktop.html", gin.H{
 			"sessionID": sessionID,
+			"LangTag":   "zh-CN",
+			"Strings":   desktopStringsFor("zh"),
+		})
+	})
+
+	router.GET("/en/session/:session_id", func(c *gin.Context) {
+		sessionID := c.Param("session_id")
+		c.HTML(http.StatusOK, "desktop.html", gin.H{
+			"sessionID": sessionID,
+			"LangTag":   "en",
+			"Strings":   desktopStringsFor("en"),
 		})
 	})
 

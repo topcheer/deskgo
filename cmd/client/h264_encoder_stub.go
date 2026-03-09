@@ -1,11 +1,12 @@
-// +build desktop,!darwin
+//go:build desktop && !darwin && !linux
+// +build desktop,!darwin,!linux
 
 package main
 
 /*
-H.264 编码器空实现（非 macOS 平台）
+H.264 编码器空实现（当前用于 Windows 等暂未实现 H.264 的平台）
 
-用于 Windows/Linux 平台，自动回退到 JPEG 编码
+自动回退到 JPEG 编码
 */
 
 import (

@@ -1,0 +1,18 @@
+services:
+  relay-server:
+    image: ghcr.io/topcheer/deskgo:latest
+    container_name: deskgo-relay
+    ports:
+      - "8082:8082"
+    environment:
+      RELAY_HOST: 0.0.0.0
+      RELAY_PORT: 8082
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/api/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    volumes:
+      - ./logs:/app/logs

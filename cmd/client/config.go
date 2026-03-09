@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 // Config 配置结构
@@ -26,23 +27,57 @@ type Config struct {
 	Session string `json:"session,omitempty"`
 
 	// H.264 编码配置
-	Codec          string `json:"codec,omitempty"`           // "jpeg" 或 "h264"，默认 "jpeg"
-	H264Bitrate    int    `json:"h264_bitrate,omitempty"`    // H.264 比特率 (Kbps)，默认 2000
-	H264KeyInterval int   `json:"h264_key_interval,omitempty"` // 关键帧间隔，默认 60
+	Codec           string `json:"codec,omitempty"`             // "jpeg" 或 "h264"，默认按平台选择
+	H264Bitrate     int    `json:"h264_bitrate,omitempty"`      // H.264 比特率 (Kbps)，默认 2000
+	H264KeyInterval int    `json:"h264_key_interval,omitempty"` // 关键帧间隔，默认 60
 }
 
 // DefaultConfig 返回默认配置
 func DefaultConfig() Config {
 	return Config{
 		Server:          "wss://deskgo.zty8.cn/api/desktop",
-		Display:         0,     // 主显示器
-		FPS:             15,    // 15 fps
-		Quality:         75,    // JPEG 质量 75%
-		Session:         "",    // 自动生成
-		Codec:           "jpeg", // 默认使用 JPEG
-		H264Bitrate:     2000,  // H.264 2 Mbps
-		H264KeyInterval: 60,    // 每60帧一个关键帧
+		Display:         0,                      // 主显示器
+		FPS:             15,                     // 15 fps
+		Quality:         75,                     // JPEG 质量 75%
+		Session:         "",                     // 自动生成
+		Codec:           defaultPlatformCodec(), // 默认按平台选择
+		H264Bitrate:     2000,                   // H.264 2 Mbps
+		H264KeyInterval: 60,                     // 每60帧一个关键帧
 	}
+}
+
+func defaultPlatformCodec() string {
+	switch runtime.GOOS {
+	case "darwin", "linux":
+		return "h264"
+	default:
+		return "jpeg"
+	}
+}
+
+func normalizeConfig(config Config) Config {
+	defaults := DefaultConfig()
+
+	if config.Server == "" {
+		config.Server = defaults.Server
+	}
+	if config.FPS == 0 {
+		config.FPS = defaults.FPS
+	}
+	if config.Quality == 0 {
+		config.Quality = defaults.Quality
+	}
+	if config.Codec == "" {
+		config.Codec = defaults.Codec
+	}
+	if config.H264Bitrate == 0 {
+		config.H264Bitrate = defaults.H264Bitrate
+	}
+	if config.H264KeyInterval == 0 {
+		config.H264KeyInterval = defaults.H264KeyInterval
+	}
+
+	return config
 }
 
 // LoadConfig 加载配置文件
@@ -91,7 +126,7 @@ func loadConfigFile(path string) (Config, error) {
 		return Config{}, fmt.Errorf("解析配置文件失败: %w", err)
 	}
 
-	return config, nil
+	return normalizeConfig(config), nil
 }
 
 // saveConfigFile 保存配置到指定路径

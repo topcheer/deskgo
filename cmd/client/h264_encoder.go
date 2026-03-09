@@ -1,3 +1,4 @@
+//go:build desktop
 // +build desktop
 
 package main
@@ -7,7 +8,8 @@ H.264 硬件编码器接口
 
 支持平台：
 - macOS: VideoToolbox (硬件加速)
-- Windows/Linux: 空实现（回退到 JPEG）
+- Linux: ffmpeg/libx264（软件编码，要求系统安装 ffmpeg）
+- Windows: 空实现（回退到 JPEG）
 */
 
 import (
@@ -33,10 +35,10 @@ type H264Encoder interface {
 
 // H264Config H.264 编码配置
 type H264Config struct {
-	Bitrate      int // 比特率 (Kbps)
-	KeyInterval  int // 关键帧间隔 (帧数)
-	Profile      string // H.264 Profile (baseline, main, high)
-	Level        string // H.264 Level
+	Bitrate     int    // 比特率 (Kbps)
+	KeyInterval int    // 关键帧间隔 (帧数)
+	Profile     string // H.264 Profile (baseline, main, high)
+	Level       string // H.264 Level
 }
 
 // DefaultH264Config 默认 H.264 配置
