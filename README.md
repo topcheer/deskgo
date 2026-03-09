@@ -9,7 +9,7 @@ DeskGo 是一个以 Go 编写的远程桌面串流方案，包含 Desktop CLI、
 - 自动运行说明：[`docs/AUTORUN.md`](docs/AUTORUN.md)
 - 构建矩阵：[`docs/BUILD_MATRIX.md`](docs/BUILD_MATRIX.md)
 - 部署指南：[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
-- 最新 Release Note 草案：[`docs/releases/v0.1.3.zh-CN.md`](docs/releases/v0.1.3.zh-CN.md)
+- 最新 Release Note 草案：[`docs/releases/v0.1.4.zh-CN.md`](docs/releases/v0.1.4.zh-CN.md)
 
 ## 核心能力
 
@@ -184,6 +184,8 @@ docker compose -f docker-compose.prod.yml up -d
 - [`docs/BUILD_MATRIX.en.md`](docs/BUILD_MATRIX.en.md)
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 - [`docs/DEPLOYMENT.en.md`](docs/DEPLOYMENT.en.md)
+- [`docs/releases/v0.1.4.zh-CN.md`](docs/releases/v0.1.4.zh-CN.md)
+- [`docs/releases/v0.1.4.md`](docs/releases/v0.1.4.md)
 - [`docs/releases/v0.1.3.zh-CN.md`](docs/releases/v0.1.3.zh-CN.md)
 - [`docs/releases/v0.1.3.md`](docs/releases/v0.1.3.md)
 - [`docs/releases/v0.1.2.zh-CN.md`](docs/releases/v0.1.2.zh-CN.md)
