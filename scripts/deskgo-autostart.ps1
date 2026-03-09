@@ -216,8 +216,14 @@ function Write-FileContent {
     if ($directory) {
         New-Item -ItemType Directory -Force -Path $directory | Out-Null
     }
-    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-    [System.IO.File]::WriteAllText($Path, $Content, $utf8NoBom)
+    $extension = [System.IO.Path]::GetExtension($Path)
+    $encoding = if ($extension -ieq '.ps1') {
+        New-Object System.Text.UTF8Encoding($true)
+    }
+    else {
+        New-Object System.Text.UTF8Encoding($false)
+    }
+    [System.IO.File]::WriteAllText($Path, $Content, $encoding)
 }
 
 function Remove-PathSafe {
@@ -298,40 +304,39 @@ function Write-LauncherLog {
 try {
     New-Item -ItemType Directory -Force -Path `$logDir | Out-Null
     Set-Location -LiteralPath `$installRoot
-    Write-LauncherLog "DeskGo 自动运行启动器已进入，工作目录: `$installRoot"
+    Write-LauncherLog "DeskGo launcher entered. Working directory: `$installRoot"
     if (-not (Test-Path -LiteralPath `$configPath)) {
-        throw "配置文件不存在: `$configPath"
+        throw "Config file missing: `$configPath"
     }
     if (-not (Test-Path -LiteralPath `$binary)) {
-        throw "二进制文件不存在: `$binary"
+        throw "Binary file missing: `$binary"
     }
     if (`$startupDelaySeconds -gt 0) {
-        Write-LauncherLog "检测到 Windows 登录启动，延迟 `$startupDelaySeconds 秒后再尝试启动。"
+        Write-LauncherLog "Delaying startup for `$startupDelaySeconds seconds after logon."
         Start-Sleep -Seconds `$startupDelaySeconds
     }
 
     for (`$attempt = 1; `$attempt -le `$maxAttempts; `$attempt++) {
-        Write-LauncherLog "启动 DeskGo Desktop CLI（attempt=`$attempt/`$maxAttempts）。"
+        Write-LauncherLog "Starting DeskGo Desktop CLI (attempt=`$attempt/`$maxAttempts)."
         & `$binary *>> `$logPath
         `$exitCode = `$LASTEXITCODE
         if (`$exitCode -eq 0) {
-            Write-LauncherLog "DeskGo Desktop CLI 已正常退出。"
+            Write-LauncherLog "DeskGo Desktop CLI exited normally."
             exit 0
         }
 
-        Write-LauncherLog "DeskGo Desktop CLI 异常退出，exit=`$exitCode。"
+        Write-LauncherLog "DeskGo Desktop CLI exited with code `$exitCode."
         if (`$attempt -ge `$maxAttempts) {
             exit `$exitCode
         }
 
         `$retryDelaySeconds = 10 * `$attempt
-        Write-LauncherLog "将在 `$retryDelaySeconds 秒后重试。"
+        Write-LauncherLog "Retrying in `$retryDelaySeconds seconds."
         Start-Sleep -Seconds `$retryDelaySeconds
     }
 }
 catch {
-    `$timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-    "[`$timestamp] 启动器错误: `$($_.Exception.Message)" | Out-File -FilePath `$logPath -Append -Encoding utf8
+    Write-LauncherLog ('Launcher error: ' + `$_.Exception.Message)
     exit 1
 }
 "@
