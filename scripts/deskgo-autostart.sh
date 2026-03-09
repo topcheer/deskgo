@@ -198,7 +198,7 @@ resolve_release_tag() {
     return
   fi
 
-  info "正在解析 ${REPOSITORY} 的 latest release..."
+  info "正在解析 ${REPOSITORY} 的 latest release..." >&2
   local latest_url
   latest_url="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/${REPOSITORY}/releases/latest")"
   local tag
