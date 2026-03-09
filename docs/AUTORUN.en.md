@@ -6,7 +6,7 @@ The DeskGo Desktop CLI must run inside a real logged-in desktop session so it ca
 
 Because of that, the installer scripts intentionally prefer **per-user login autostart** instead of a traditional system background service:
 
-- **Windows**: Scheduled Task at user logon
+- **Windows**: a hidden Scheduled Task at user logon, with an initial ~15 second delay
 - **macOS**: LaunchAgent at user login
 - **Linux**:
   - **XDG Autostart** by default (recommended for desktop sessions)
@@ -81,6 +81,7 @@ The script walks through:
 - release version to install
 
 > Note: Windows autostart currently supports `jpeg` only because the Windows H.264 autostart encoder path is not implemented yet.
+> The default Windows install root is `%LOCALAPPDATA%\DeskGo` and logs are written to `%LOCALAPPDATA%\DeskGo\logs\desktop.log`; if the machine has just logged in and networking is still coming up, the hidden launcher retries a few times automatically.
 
 ## Unattended install
 

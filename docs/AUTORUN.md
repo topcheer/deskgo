@@ -6,7 +6,7 @@ DeskGo 的 Desktop CLI 需要运行在真实的登录用户桌面会话里，才
 
 因此，自动运行安装脚本默认采用**当前用户级**的登录自启动方案，而不是传统的系统后台服务：
 
-- **Windows**：计划任务（当前用户登录时启动）
+- **Windows**：隐藏计划任务（当前用户登录时启动，登录后会延迟约 15 秒）
 - **macOS**：LaunchAgent（当前用户登录时启动）
 - **Linux**：
   - 默认推荐 **XDG Autostart**（图形会话登录时启动）
@@ -81,6 +81,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 instal
 - 要安装的 release 版本
 
 > 说明：Windows 当前自动运行模式仅支持 `jpeg`，因为 H.264 的 Windows 自动运行编码路径尚未完成。
+> 默认安装目录为 `%LOCALAPPDATA%\DeskGo`，日志位于 `%LOCALAPPDATA%\DeskGo\logs\desktop.log`；如果机器刚登录、网络尚未完全就绪，隐藏启动器会稍后自动重试几次。
 
 ## 非引导式安装
 

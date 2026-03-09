@@ -124,6 +124,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 instal
 ```
 
 在线安装成功仍依赖 GitHub latest release 中存在匹配平台的 `deskgo-desktop-<os>-<arch>` 资产和 `SHA256SUMS.txt`；如果你要做可重复部署，请显式传入 `--version` 固定版本。
+Windows 自动运行当前会注册**当前用户级、隐藏启动**的计划任务；它会在登录后延迟约 15 秒再尝试启动 CLI，日志位于 `%LOCALAPPDATA%\DeskGo\logs\desktop.log`。
 更多引导式与非引导式示例见 [`docs/AUTORUN.md`](docs/AUTORUN.md)。
 
 ## Docker 与云部署

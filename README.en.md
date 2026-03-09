@@ -124,6 +124,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 instal
 ```
 
 Online installation still depends on the GitHub latest release containing the matching `deskgo-desktop-<os>-<arch>` asset and `SHA256SUMS.txt`. For repeatable rollouts, pin `--version`.
+On Windows, autostart currently registers a **per-user hidden Scheduled Task**; it waits about 15 seconds after logon before trying to start the CLI, and logs to `%LOCALAPPDATA%\DeskGo\logs\desktop.log`.
 More guided and unattended examples are documented in [`docs/AUTORUN.en.md`](docs/AUTORUN.en.md).
 
 ## Docker and cloud deployment
