@@ -577,7 +577,7 @@ install_linux_xdg_registration() {
 interactive_collect_install_options() {
   info "进入 DeskGo 自动运行引导安装"
 
-  RELAY_SERVER="$(prompt_default 'Relay 地址（支持 https://host 或 wss://host/api/desktop）' "${RELAY_SERVER:-wss://deskgo.zty8.cn/api/desktop}")"
+  RELAY_SERVER="$(prompt_default 'Relay 地址（支持 https://host 或 wss://host/api/desktop）' "${RELAY_SERVER:-wss://deskgo.ystone.us/api/desktop}")"
 
   if [[ "$OS_NAME" == "linux" ]]; then
     local default_mode
@@ -640,7 +640,7 @@ ensure_action() {
 }
 
 prepare_install_values() {
-  RELAY_SERVER="$(normalize_relay_server_url "${RELAY_SERVER:-wss://deskgo.zty8.cn/api/desktop}")"
+  RELAY_SERVER="$(normalize_relay_server_url "${RELAY_SERVER:-wss://deskgo.ystone.us/api/desktop}")"
   CODEC="${CODEC:-$(default_codec)}"
   CODEC="${CODEC,,}"
   validate_codec "$CODEC"

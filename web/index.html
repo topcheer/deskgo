@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeskGo Relay - 多架构远程桌面接入</title>
+    <title>DeskGo - 在浏览器里连接你的电脑</title>
     <style>
         :root {
             color-scheme: light;
@@ -625,6 +625,40 @@
             margin-top: 20px;
         }
 
+        .command-head {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .command-label {
+            color: var(--text);
+            font-weight: 700;
+            font-size: 0.96rem;
+        }
+
+        .copy-button {
+            border: 1px solid rgba(99, 102, 241, 0.18);
+            background: rgba(255, 255, 255, 0.82);
+            color: var(--primary-strong);
+            box-shadow: 0 12px 24px rgba(99, 102, 241, 0.12);
+            cursor: pointer;
+        }
+
+        .copy-button:hover,
+        .copy-button:focus-visible {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(99, 102, 241, 0.28);
+        }
+
+        .copy-button:focus-visible {
+            outline: 3px solid rgba(14, 165, 233, 0.28);
+            outline-offset: 2px;
+        }
+
         .download-card ul,
         .feature-card ul {
             margin: 16px 0 0;
@@ -655,9 +689,64 @@
             font-family: "SFMono-Regular", SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
 
+        .command-head + .command-snippet {
+            margin-top: 12px;
+        }
+
         .mini-note {
             margin-top: 16px !important;
             font-size: 0.94rem;
+        }
+
+        .advanced-panel {
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .advanced-panel details {
+            padding: 24px;
+        }
+
+        .advanced-panel summary {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            cursor: pointer;
+            color: var(--text);
+            font-weight: 700;
+        }
+
+        .advanced-panel summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .advanced-panel summary::after {
+            content: "+";
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary-strong);
+            font-size: 1.1rem;
+            flex: none;
+        }
+
+        .advanced-panel details[open] summary::after {
+            content: "−";
+        }
+
+        .advanced-panel p {
+            margin-top: 14px;
+        }
+
+        .advanced-panel .downloads,
+        .advanced-panel .download-empty {
+            margin-top: 20px;
         }
 
         .download-actions {
@@ -816,17 +905,17 @@
             <div class="brand">
                 <span class="brand-mark" aria-hidden="true"></span>
                 <div class="brand-copy">
-                    <span>DeskGo Relay</span>
-                    <strong>多架构远程桌面接入</strong>
+                    <span>DeskGo</span>
+                    <strong>浏览器远程桌面</strong>
                 </div>
             </div>
             <nav class="nav" aria-label="主导航">
                 <a href="#session">连接会话</a>
-                <a href="#downloads">构建下载</a>
+                <a href="#downloads">下载客户端</a>
                 <a href="#autostart">自动运行</a>
-                <a href="#features">核心能力</a>
-                <a href="#steps">接入流程</a>
-                <a href="{{ .ReadmeZHURL }}" class="ghost-button">查看文档</a>
+                <a href="#features">适合场景</a>
+                <a href="#steps">三步开始</a>
+                <a href="{{ .ReadmeZHURL }}" class="ghost-button">帮助文档</a>
                 <a href="/en" class="ghost-button" lang="en">English</a>
             </nav>
         </header>
@@ -834,29 +923,29 @@
         <main>
             <section class="hero">
                 <div class="hero-card hero-copy">
-                    <span class="eyebrow">Desktop CLI / Relay / Bilingual Web</span>
-                    <h1>一次构建，覆盖更多桌面终端与 Relay 部署架构。</h1>
+                    <span class="eyebrow">轻量、直接、面向真实使用</span>
+                    <h1>打开自己的另一台电脑，只需要一个浏览器。</h1>
                     <p>
-                        DeskGo Relay 现在同时提供三大桌面操作系统的多架构 CLI、
-                        更丰富的 Relay 服务器二进制、中英双语网站入口，以及可直接在线执行的一键自动运行脚本。
-                        下载区会根据当前产物目录自动列出可用构建，并附带 SHA256 校验文件。
+                        先在需要被访问的电脑上运行 DeskGo，然后在浏览器里输入会话名，
+                        就能进入那台电脑的桌面。它适合远程办公、临时帮别人看看电脑，
+                        也适合在外面打开家里的常用设备。
                     </p>
                     <div class="hero-actions">
-                        <a href="#session" class="primary-button">立即连接会话</a>
-                        <a href="#autostart" class="ghost-button">一键安装自动运行</a>
+                        <a href="#session" class="primary-button">输入会话名</a>
+                        <a href="#downloads" class="ghost-button">下载 DeskGo</a>
                     </div>
                     <div class="stats" aria-label="关键指标">
                         <div class="stat-card">
-                            <strong>{{ .DesktopArtifactCount }} 个 CLI 构建</strong>
-                            <span>覆盖 macOS、Windows、Linux 的多架构桌面客户端发布包。</span>
+                            <strong>查看端只用浏览器</strong>
+                            <span>不需要额外安装查看器，就能打开桌面。</span>
                         </div>
                         <div class="stat-card">
-                            <strong>{{ .RelayArtifactCount }} 个 Relay 构建</strong>
-                            <span>适用于 Intel、ARM、RISC-V 以及常见 Linux 服务器架构。</span>
+                            <strong>会话名容易记</strong>
+                            <span>会话名大小写不敏感，分享给别人也更省心。</span>
                         </div>
                         <div class="stat-card">
-                            <strong>中文 / English</strong>
-                            <span>首页与会话页面都提供英文入口，方便跨团队分发与支持。</span>
+                            <strong>常用电脑可自动上线</strong>
+                            <span>适合家中主力机、办公室工位机和常用笔记本。</span>
                         </div>
                     </div>
                 </div>
@@ -867,12 +956,12 @@
                             <div class="window-dots" aria-hidden="true">
                                 <span></span><span></span><span></span>
                             </div>
-                            <span>DeskGo Relay Console</span>
+                            <span>DeskGo 如何使用</span>
                         </div>
                         <div class="window-body">
                             <div class="preview-toolbar">
-                                <div class="preview-chip"><span class="dot"></span> {{ .DesktopArtifactCount }} CLI Builds</div>
-                                <div class="preview-chip">{{ .RelayArtifactCount }} Relay Builds</div>
+                                <div class="preview-chip"><span class="dot"></span> 第 1 步：在目标电脑运行</div>
+                                <div class="preview-chip">第 2 步：浏览器输入会话名</div>
                             </div>
                             <div class="preview-grid">
                                 <div class="preview-stage">
@@ -885,9 +974,9 @@
                                     </div>
                                 </div>
                                 <div class="preview-panel">
-                                    <div class="panel-row">网站按当前产物目录自动列出 CLI 与 Relay 的可下载架构。</div>
-                                    <div class="panel-row">会话页支持中英双语，并在 CLI 断开时主动提示与关闭连接。</div>
-                                    <div class="panel-row">一键构建脚本同时输出下载包与 SHA256SUMS.txt。</div>
+                                    <div class="panel-row">下载并启动 DeskGo，终端会显示会话名。</div>
+                                    <div class="panel-row">把会话名记下来，或直接复制访问链接。</div>
+                                    <div class="panel-row">在浏览器输入会话名，就能看到目标电脑的桌面。</div>
                                 </div>
                             </div>
                         </div>
@@ -898,28 +987,28 @@
             <section class="section" id="session">
                 <div class="section-heading">
                     <div>
-                        <h2>输入会话 ID，直接进入远程桌面。</h2>
-                        <p>适用于已经启动 CLI 的场景；如果要使用英文界面，可切换到 <a href="/en">/en</a> 版本并使用相同的会话 ID。</p>
+                        <h2>输入会话名，马上进入远程桌面。</h2>
+                        <p>如果目标电脑已经运行 DeskGo，这里就是最快的入口；中文站和英文站都能用同一个会话名。</p>
                     </div>
                 </div>
                 <div class="panel session-layout">
                     <div>
                         <form class="session-form" id="sessionForm">
-                            <input id="sessionInput" name="session" type="text" autocomplete="off" placeholder="例如：deskgo-demo-001" aria-label="会话 ID">
-                            <button type="submit">连接会话</button>
+                            <input id="sessionInput" name="session" type="text" autocomplete="off" placeholder="例如：home-pc" aria-label="会话 ID">
+                            <button type="submit">打开桌面</button>
                         </form>
                         <p class="session-note">
-                            CLI 启动后会在终端输出会话 ID 和访问链接；你也可以把链接直接分享给查看者。
+                            DeskGo 客户端启动后会显示会话名和访问链接；你也可以把完整链接直接分享给查看者。
                         </p>
                     </div>
                     <div class="session-tips">
                         <div class="session-tip">
-                            <strong>等待接入时保持页面打开</strong>
-                            <p>当桌面端尚未连接时，浏览器会显示等待状态；接入成功后将自动切换到串流视图。</p>
+                            <strong>电脑还没上线？页面会自动等待</strong>
+                            <p>如果对方电脑还未连接，页面会保持等待状态；一旦上线会自动切换到桌面画面。</p>
                         </div>
                         <div class="session-tip">
-                            <strong>桌面端断开时自动提示</strong>
-                            <p>如果 CLI 退出、会话结束或连接异常，查看器会立即断开并显示恢复指引。</p>
+                            <strong>断开时会马上提示你</strong>
+                            <p>如果目标电脑退出、断线或会话结束，查看页会立刻提示，而不是停留在假连接状态。</p>
                         </div>
                     </div>
                 </div>
@@ -928,19 +1017,16 @@
             <section class="section" id="downloads">
                 <div class="section-heading">
                     <div>
-                        <h2>下载多架构构建。</h2>
-                        <p>一键构建脚本会生成 Desktop CLI、Relay 服务器二进制以及 SHA256 校验文件；站点会按当前 downloads 目录自动展示可用构建。</p>
+                        <h2>先下载要安装在目标电脑上的 DeskGo。</h2>
+                        <p>大多数用户只需要下面的桌面客户端。下载后在“那台要被访问的电脑”上运行，然后记住它显示出来的会话名即可。</p>
                     </div>
                 </div>
                 <div class="download-section">
                     <div class="download-section-head">
                         <div>
-                            <h3>Desktop CLI 发布包</h3>
-                            <p>桌面客户端下载包覆盖三大操作系统，并针对 macOS 原生捕获、Windows 输入体验以及 Linux H.264 默认路径做了平台适配。</p>
+                            <h3>给普通用户的下载</h3>
+                            <p>第一次使用时，建议先手动启动一次，确认会话名和连接都正常；以后再决定是否开启自动运行。</p>
                         </div>
-                        {{ if .HasChecksums }}
-                        <a class="ghost-button" href="{{ .ChecksumURL }}">查看 SHA256 校验</a>
-                        {{ end }}
                     </div>
                     {{ if .DesktopDownloads }}
                     <div class="downloads">
@@ -968,55 +1054,59 @@
                         {{ end }}
                     </div>
                     {{ else }}
-                    <div class="download-empty">当前 downloads 目录中还没有 Desktop CLI 构建，请先运行 <code>./build.sh</code>。</div>
+                    <div class="download-empty">当前还没有可下载的 DeskGo 客户端，请稍后刷新页面，或联系部署者更新下载目录。</div>
                     {{ end }}
                 </div>
 
-                <div class="download-section">
-                    <div class="download-section-head">
-                        <div>
-                            <h3>Relay 服务器发布包</h3>
-                            <p>Relay 二进制扩展到更多服务器架构，适合本地部署、边缘节点、ARM 主机以及异构 Linux 服务器集群。</p>
+                <div class="panel advanced-panel">
+                    <details>
+                        <summary>高级用户：我需要自己部署 DeskGo 服务</summary>
+                        <p>如果你要自建服务、做团队统一入口或部署到自己的服务器，再看下面这些内容；普通用户可以直接跳过。</p>
+                        <div class="inline-links">
+                            <a class="ghost-button" href="{{ .BuildMatrixZHURL }}">架构说明</a>
+                            <a class="ghost-button" href="{{ .RepositoryURL }}">GitHub 仓库</a>
+                            {{ if .HasChecksums }}
+                            <a class="ghost-button" href="{{ .ChecksumURL }}">SHA256 校验</a>
+                            {{ end }}
                         </div>
-                        <a class="ghost-button" href="{{ .BuildMatrixZHURL }}">查看架构说明</a>
-                    </div>
-                    {{ if .RelayDownloads }}
-                    <div class="downloads">
-                        {{ range .RelayDownloads }}
-                        <article class="download-card">
-                            <div class="icon-wrap" aria-hidden="true">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                                    <path d="M12 3l7 4v10l-7 4-7-4V7l7-4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-                                    <path d="M12 7v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                                    <path d="M8 9.5l4 2.5 4-2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </div>
-                            <h3>{{ .TitleZH }}</h3>
-                            <p>{{ .DescriptionZH }}</p>
-                            <div class="download-meta">
-                                {{ range .Artifacts }}
-                                <span class="pill">{{ .Arch }}</span>
-                                {{ end }}
-                            </div>
-                            <div class="download-actions">
-                                {{ range .Artifacts }}
-                                <a class="download-link" href="{{ .URL }}">下载 {{ .Arch }}</a>
-                                {{ end }}
-                            </div>
-                        </article>
+                        {{ if .RelayDownloads }}
+                        <div class="downloads">
+                            {{ range .RelayDownloads }}
+                            <article class="download-card">
+                                <div class="icon-wrap" aria-hidden="true">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 3l7 4v10l-7 4-7-4V7l7-4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                        <path d="M12 7v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                        <path d="M8 9.5l4 2.5 4-2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <h3>{{ .TitleZH }}</h3>
+                                <p>{{ .DescriptionZH }}</p>
+                                <div class="download-meta">
+                                    {{ range .Artifacts }}
+                                    <span class="pill">{{ .Arch }}</span>
+                                    {{ end }}
+                                </div>
+                                <div class="download-actions">
+                                    {{ range .Artifacts }}
+                                    <a class="download-link" href="{{ .URL }}">下载 {{ .Arch }}</a>
+                                    {{ end }}
+                                </div>
+                            </article>
+                            {{ end }}
+                        </div>
+                        {{ else }}
+                        <div class="download-empty">当前还没有可下载的 Relay 服务器包，请稍后刷新页面或联系部署者更新下载目录。</div>
                         {{ end }}
-                    </div>
-                    {{ else }}
-                    <div class="download-empty">当前 downloads 目录中还没有 Relay 服务器构建，请先运行 <code>./build.sh</code>。</div>
-                    {{ end }}
+                    </details>
                 </div>
             </section>
 
             <section class="section" id="autostart">
                 <div class="section-heading">
                     <div>
-                        <h2>在线一键安装自动运行。</h2>
-                        <p>推荐直接复制下方 GitHub 在线安装命令。Shell / PowerShell 脚本同时支持引导式安装与非引导参数模式，会按当前设备平台下载匹配 CLI、校验 SHA256、写入固定 session 配置，并按当前用户注册自动启动。</p>
+                        <h2>想让常用电脑自动上线？</h2>
+                        <p>下面的一键脚本适合经常需要被访问的电脑。复制命令执行后，它会一步步引导你设置地址和固定会话名，然后让这台电脑在登录后自动启动 DeskGo。</p>
                     </div>
                 </div>
                 <div class="downloads">
@@ -1027,18 +1117,22 @@
                                 <path d="M10 8h8M10 12h8M10 16h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                             </svg>
                         </div>
-                        <h3>macOS / Linux 安装器</h3>
-                        <p>面向当前登录用户：macOS 使用 LaunchAgent，Linux 默认使用 XDG Autostart，并支持切换到 <code>systemd --user</code>。</p>
+                        <h3>macOS / Linux 一键安装</h3>
+                        <p>适合个人 Mac、Linux 台式机或笔记本。安装后，这台电脑登录桌面时会自动启动 DeskGo。</p>
                         <ul>
-                            <li>支持交互式安装 / 卸载，也支持 <code>--non-interactive</code> 直接传参</li>
-                            <li>支持自定义 Relay、固定 Session 名字、Codec 与版本</li>
-                            <li>安装命令直接从 GitHub Raw 拉取脚本，CLI 二进制默认来自 GitHub latest release</li>
+                            <li>支持引导式安装 / 卸载，也支持一次性传参</li>
+                            <li>可自定义 DeskGo 地址、固定会话名与画面设置</li>
+                            <li>适合希望“开机登录后就能连上”的常用电脑</li>
                         </ul>
                         <div class="inline-links">
                             <a class="primary-button" href="{{ .AutostartShellURL }}">GitHub shell 脚本</a>
                             <a class="ghost-button" href="{{ .AutostartGuideZHURL }}">查看完整说明</a>
                         </div>
-                        <pre class="command-snippet"><code>rm -f /tmp/deskgo-autostart.sh
+                        <div class="command-head">
+                            <span class="command-label">直接复制这条安装命令</span>
+                            <button type="button" class="ghost-button copy-button" data-copy-target="autostart-shell-command" data-copy-default="复制命令" data-copy-success="已复制" data-copy-error="复制失败">复制命令</button>
+                        </div>
+                        <pre class="command-snippet"><code id="autostart-shell-command">rm -f /tmp/deskgo-autostart.sh
 curl -fsSL -H 'Cache-Control: no-cache' "{{ .AutostartShellURL }}?ts=$(date +%s)" -o /tmp/deskgo-autostart.sh
 bash /tmp/deskgo-autostart.sh install</code></pre>
                     </article>
@@ -1050,18 +1144,22 @@ bash /tmp/deskgo-autostart.sh install</code></pre>
                                 <path d="M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                             </svg>
                         </div>
-                        <h3>Windows 安装器</h3>
-                        <p>使用当前用户的 Scheduled Task 在登录后启动 CLI，无需管理员权限即可覆盖大多数桌面自启动场景。</p>
+                        <h3>Windows 一键安装</h3>
+                        <p>适合办公电脑或家中常用 Windows 设备。安装后，登录桌面时会自动启动 DeskGo，无需管理员权限。</p>
                         <ul>
                             <li>支持引导式或一次性传参安装，也支持卸载清理</li>
-                            <li>自动下载匹配架构的 Windows CLI，并验证 <code>SHA256SUMS.txt</code></li>
-                            <li>Windows 当前自动运行模式建议使用 <code>jpeg</code> codec，安装命令同样直接从 GitHub Raw 拉取脚本</li>
+                            <li>自动下载适合当前 Windows 架构的客户端</li>
+                            <li>Windows 自动运行时，跟着安装器的默认推荐设置即可</li>
                         </ul>
                         <div class="inline-links">
                             <a class="primary-button" href="{{ .AutostartPowerShellURL }}">GitHub PowerShell 脚本</a>
                             <a class="ghost-button" href="{{ .AutostartGuideZHURL }}">查看完整说明</a>
                         </div>
-                        <pre class="command-snippet"><code>$script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
+                        <div class="command-head">
+                            <span class="command-label">直接复制这条安装命令</span>
+                            <button type="button" class="ghost-button copy-button" data-copy-target="autostart-powershell-command" data-copy-default="复制命令" data-copy-success="已复制" data-copy-error="复制失败">复制命令</button>
+                        </div>
+                        <pre class="command-snippet"><code id="autostart-powershell-command">$script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
 $uri = "{{ .AutostartPowerShellURL }}?ts=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
 Remove-Item $script -ErrorAction SilentlyContinue
 Invoke-WebRequest $uri -UseBasicParsing -Headers @{ 'Cache-Control' = 'no-cache' } -OutFile $script
@@ -1074,14 +1172,14 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
                                 <path d="M9.5 12.5l1.8 1.8 3.7-4.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </div>
-                        <h3>使用前请确认</h3>
-                        <p>这里展示的是直接面向用户的 GitHub 在线安装方式；真正安装成功仍取决于发布产物是否满足脚本约定。</p>
+                        <h3>安装前先准备好这两件事</h3>
+                        <p>这样安装过程会更顺畅，也更方便你以后反复使用。</p>
                         <ul>
-                            <li>latest release 必须包含匹配平台的 <code>deskgo-desktop-&lt;os&gt;-&lt;arch&gt;</code> 资产与 <code>SHA256SUMS.txt</code></li>
-                            <li>自动运行针对“当前登录用户的桌面会话”，不适合无人登录的系统服务场景</li>
-                            <li>脚本默认把配置写到安装目录中的 <code>deskgo.json</code>，因此也兼容尚未支持 <code>-config</code> 的旧 release CLI</li>
+                            <li>一个你以后容易记住的会话名，例如 <code>home-pc</code> 或 <code>office-main</code></li>
+                            <li>能正常访问的 DeskGo 地址，以及一台会保持桌面登录状态的电脑</li>
+                            <li>如果你只是偶尔使用，先手动启动客户端往往更简单</li>
                         </ul>
-                        <p class="mini-note">如果你要做可预测的批量部署，请固定 <code>--version</code>，并参考 <a href="{{ .BuildMatrixZHURL }}">构建矩阵</a>、<a href="{{ .AutostartGuideZHURL }}">自动运行文档</a> 与 <a href="{{ .RepositoryURL }}">GitHub 仓库</a>。</p>
+                        <p class="mini-note">如果你需要更细的安装参数、批量部署方法或自建服务说明，可以继续查看 <a href="{{ .AutostartGuideZHURL }}">自动运行文档</a>、<a href="{{ .ReadmeZHURL }}">README</a> 与 <a href="{{ .RepositoryURL }}">GitHub 仓库</a>。</p>
                     </article>
                 </div>
             </section>
@@ -1089,8 +1187,8 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
             <section class="section" id="features">
                 <div class="section-heading">
                     <div>
-                        <h2>围绕发布矩阵、交付体验与双语支持做的优化。</h2>
-                        <p>这次更新不仅扩展了多架构构建，也把网站、构建脚本和核心文档统一到同一套发布入口。</p>
+                        <h2>这些日常场景最适合 DeskGo。</h2>
+                        <p>如果你脑子里想的是“我想在别处打开那台电脑”，通常就是下面这几种情况。</p>
                     </div>
                 </div>
                 <div class="features-grid">
@@ -1101,12 +1199,12 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
                                 <path d="M12 5v14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                             </svg>
                         </div>
-                        <h3>发布矩阵更完整</h3>
-                        <p>Desktop CLI 现在覆盖 macOS、Windows、Linux 的更多架构；Relay 服务器则进一步扩展到常见 Linux 服务器平台。</p>
+                        <h3>远程打开家里的电脑</h3>
+                        <p>出门在外时，随时回到家里那台电脑，拿文件、开程序、做一点临时操作。</p>
                         <ul>
-                            <li>三大桌面系统多架构发布</li>
-                            <li>Relay 面向服务器架构扩展</li>
-                            <li>下载清单随构建自动更新</li>
+                            <li>适合出差、旅行、外出办公时使用</li>
+                            <li>浏览器就能进入，不用再装查看端</li>
+                            <li>固定会话名后更容易反复连接</li>
                         </ul>
                     </article>
                     <article class="feature-card">
@@ -1116,12 +1214,12 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
                                 <path d="M7 4h10v16H7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
                             </svg>
                         </div>
-                        <h3>网站双语更完整</h3>
-                        <p>首页与会话页面都增加了英文版本，便于为国际团队、测试人员和外部协作方提供统一入口。</p>
+                        <h3>继续办公室里的工作</h3>
+                        <p>下班后或外出时，从浏览器回到自己的工位机或常用工作电脑，继续处理任务。</p>
                         <ul>
-                            <li>中文 / English 首页切换</li>
-                            <li>英文会话页面可直接使用</li>
-                            <li>下载说明与构建矩阵同步展示</li>
+                            <li>适合固定工位机和个人工作站</li>
+                            <li>自动运行后，登录桌面就能上线</li>
+                            <li>同一个会话名可以长期使用</li>
                         </ul>
                     </article>
                     <article class="feature-card">
@@ -1131,12 +1229,12 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
                                 <path d="M9 17v3M15 17v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                             </svg>
                         </div>
-                        <h3>一键构建更适合分发</h3>
-                        <p><code>./build.sh</code> 会同时生成当前平台运行文件、跨架构下载包以及 SHA256 校验文件，方便直接分发或打包进 Relay 镜像。</p>
+                        <h3>帮家人或同事看电脑</h3>
+                        <p>当对方不熟悉技术细节时，你只需要让对方先把电脑连上，再通过浏览器进入查看。</p>
                         <ul>
-                            <li>CLI 与 Relay 同步打包</li>
-                            <li>校验文件自动输出</li>
-                            <li>Docker 可直接承载下载目录</li>
+                            <li>可以直接分享完整访问链接</li>
+                            <li>等待和断线状态都看得更清楚</li>
+                            <li>比解释复杂的远程桌面软件更容易</li>
                         </ul>
                     </article>
                 </div>
@@ -1145,25 +1243,25 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
             <section class="section" id="steps">
                 <div class="section-heading">
                     <div>
-                        <h2>三步完成构建与接入。</h2>
-                        <p>无论你要分发客户端还是部署 Relay，都可以沿用同一套构建与访问路径。</p>
+                        <h2>三步开始使用。</h2>
+                        <p>第一次使用时，按这个顺序做最省心。</p>
                     </div>
                 </div>
                 <div class="steps-grid">
                     <article class="step-card">
                         <span class="step-index">1</span>
-                        <h3>运行构建脚本</h3>
-                        <p>执行 <code>./build.sh</code>，生成当前平台运行文件、Desktop CLI 下载包、Relay 发布包与 SHA256SUMS.txt。</p>
+                        <h3>下载并运行 DeskGo</h3>
+                        <p>在需要被访问的电脑上下载对应平台的客户端，先手动启动一次，确认能成功连接并看到会话名。</p>
                     </article>
                     <article class="step-card">
                         <span class="step-index">2</span>
-                        <h3>部署 Relay</h3>
-                        <p>启动本地二进制或 Docker 镜像；站点会自动从 downloads 目录提供可下载构建，并支持 / 和 /en 两个入口。</p>
+                        <h3>记住会话名</h3>
+                        <p>启动后会显示会话名和访问链接。常用电脑可以再用一键脚本把会话名固定下来，方便以后重复使用。</p>
                     </article>
                     <article class="step-card">
                         <span class="step-index">3</span>
-                        <h3>启动 CLI 并分享链接</h3>
-                        <p>在桌面主机上运行对应架构的 CLI，随后通过会话 ID 或访问链接进入浏览器查看器。</p>
+                        <h3>在浏览器输入会话名</h3>
+                        <p>打开浏览器输入会话名即可进入桌面；如果你分享的是完整链接，对方甚至不需要手动输入。</p>
                     </article>
                 </div>
             </section>
@@ -1171,24 +1269,70 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
 
         <footer class="footer-grid">
             <section class="footer-card">
-                <h3>为发布与分发而设计</h3>
-                <p>Relay 不只是会话转发器，它还承担多架构下载入口、双语页面、一键自动运行脚本说明以及浏览器查看体验的统一交付。</p>
+                <h3>先看这三块就够了</h3>
+                <p>如果你只是想远程打开自己的电脑，优先看“连接会话”、“下载客户端”和“自动运行”这三块，不需要先理解更多技术细节。</p>
                 <div class="footer-links">
-                    <a href="#downloads">下载矩阵</a>
+                    <a href="#session">连接会话</a>
+                    <a href="#downloads">下载客户端</a>
                     <a href="#autostart">自动运行</a>
-                    <a href="{{ .ReadmeZHURL }}">README</a>
-                    <a href="{{ .ReadmeENURL }}">README EN</a>
+                    <a href="{{ .ReadmeZHURL }}">帮助文档</a>
                 </div>
             </section>
             <section class="footer-card">
-                <h3>部署提示</h3>
-                <p>在线安装脚本建议直接从 GitHub Raw 拉取，但安装成功仍依赖 latest release 中存在匹配平台的 CLI 二进制和 <code>SHA256SUMS.txt</code>；如需可重复部署，请显式传入 <code>--version</code> 固定版本。</p>
-                <p class="fineprint">DeskGo Relay · 多架构发布入口 · H.264 / JPEG 自动协商 · 中英双语站点</p>
+                <h3>需要更详细的说明？</h3>
+                <p>如果你要自建服务、批量部署或查看更多安装参数，可以继续阅读文档与仓库说明。</p>
+                <p class="fineprint">DeskGo · 浏览器远程桌面入口 · 固定会话名 · 自动运行脚本 · 中英双语页面</p>
             </section>
         </footer>
     </div>
 
     <script>
+        async function copyTextToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                return;
+            }
+
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+
+            const copied = document.execCommand('copy');
+            textarea.remove();
+
+            if (!copied) {
+                throw new Error('copy failed');
+            }
+        }
+
+        document.querySelectorAll('[data-copy-target]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                const target = document.getElementById(button.dataset.copyTarget);
+                if (!target) {
+                    return;
+                }
+
+                const defaultLabel = button.dataset.copyDefault || button.textContent;
+                const successLabel = button.dataset.copySuccess || defaultLabel;
+                const errorLabel = button.dataset.copyError || defaultLabel;
+
+                try {
+                    await copyTextToClipboard(target.textContent.trim());
+                    button.textContent = successLabel;
+                } catch (error) {
+                    button.textContent = errorLabel;
+                }
+
+                window.setTimeout(() => {
+                    button.textContent = defaultLabel;
+                }, 1800);
+            });
+        });
+
         document.getElementById('sessionForm').addEventListener('submit', (event) => {
             event.preventDefault();
             const sessionInput = document.getElementById('sessionInput');

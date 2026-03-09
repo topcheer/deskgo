@@ -4,12 +4,12 @@ DeskGo is a Go-based remote desktop streaming stack composed of a Desktop CLI, a
 This repository has been cleaned up to remove the old experimental scope and now focuses on native desktop capture, WebSocket relay delivery, browser viewing, and multi-architecture releases.
 
 - Upstream repository: <https://github.com/topcheer/deskgo>
-- Live demo: <https://deskgo.zty8.cn>
+- Live demo: <https://deskgo.ystone.us>
 - Chinese README: [`README.md`](README.md)
 - Autostart guide: [`docs/AUTORUN.en.md`](docs/AUTORUN.en.md)
 - Build matrix: [`docs/BUILD_MATRIX.en.md`](docs/BUILD_MATRIX.en.md)
 - Deployment guide: [`docs/DEPLOYMENT.en.md`](docs/DEPLOYMENT.en.md)
-- Latest release notes draft: [`docs/releases/v0.1.1.md`](docs/releases/v0.1.1.md)
+- Latest release notes draft: [`docs/releases/v0.1.3.md`](docs/releases/v0.1.3.md)
 
 ## Core capabilities
 
@@ -80,13 +80,13 @@ Linux / Windows:
 Use a relay proxy:
 
 ```bash
-./bin/deskgo-desktop -server wss://deskgo.zty8.cn/api/desktop -session demo -proxy http://proxy.internal:8080
+./bin/deskgo-desktop -server wss://deskgo.ystone.us/api/desktop -session demo -proxy http://proxy.internal:8080
 ```
 
 You can also rely on environment variables:
 
 ```bash
-HTTPS_PROXY=http://proxy.internal:8080 ./bin/deskgo-desktop -server wss://deskgo.zty8.cn/api/desktop -session demo
+HTTPS_PROXY=http://proxy.internal:8080 ./bin/deskgo-desktop -server wss://deskgo.ystone.us/api/desktop -session demo
 ```
 
 ### 4. Install autostart
@@ -184,6 +184,10 @@ The repository includes two GitHub Actions workflows:
 - [`docs/BUILD_MATRIX.en.md`](docs/BUILD_MATRIX.en.md)
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 - [`docs/DEPLOYMENT.en.md`](docs/DEPLOYMENT.en.md)
+- [`docs/releases/v0.1.3.zh-CN.md`](docs/releases/v0.1.3.zh-CN.md)
+- [`docs/releases/v0.1.3.md`](docs/releases/v0.1.3.md)
+- [`docs/releases/v0.1.2.zh-CN.md`](docs/releases/v0.1.2.zh-CN.md)
+- [`docs/releases/v0.1.2.md`](docs/releases/v0.1.2.md)
 - [`docs/releases/v0.1.1.zh-CN.md`](docs/releases/v0.1.1.zh-CN.md)
 - [`docs/releases/v0.1.1.md`](docs/releases/v0.1.1.md)
 - [`docs/releases/v0.1.0.zh-CN.md`](docs/releases/v0.1.0.zh-CN.md)

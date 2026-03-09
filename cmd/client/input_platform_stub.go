@@ -25,6 +25,26 @@ func platformKeyToggle(keycode int, down bool) error {
 	return nil
 }
 
+func platformSyncExtraMouseButtons(c *DesktopCapture, state mouseButtonState, x, y int) error {
+	return nil
+}
+
+func resolvePlatformKeyCode(event *ControlEvent) int {
+	jsKeyCode := normalizeBrowserKeyCode(event.KeyCode)
+	if jsKeyCode == 0 {
+		return -1
+	}
+	return mapJSKeyCodeToPlatformKeyCode(jsKeyCode)
+}
+
+func platformTracksKeyState() bool {
+	return false
+}
+
+func platformLogMouseControlEvent(event *ControlEvent, screenX, screenY int) {}
+
+func platformLogKeyboardControlEvent(event *ControlEvent, platformKeyCode int, down bool) {}
+
 func mapJSKeyCodeToPlatformKeyCode(jsKeyCode int) int {
 	if jsKeyCode > 0 && jsKeyCode <= 0xFF {
 		return jsKeyCode

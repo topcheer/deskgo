@@ -471,7 +471,7 @@ function Collect-InteractiveInstallOptions {
     Write-Info '进入 DeskGo 自动运行引导安装。'
 
     if (-not $RelayServer) {
-        $script:RelayServer = Read-DefaultValue -Prompt 'Relay 地址（支持 https://host 或 wss://host/api/desktop）' -DefaultValue 'wss://deskgo.zty8.cn/api/desktop'
+        $script:RelayServer = Read-DefaultValue -Prompt 'Relay 地址（支持 https://host 或 wss://host/api/desktop）' -DefaultValue 'wss://deskgo.ystone.us/api/desktop'
     }
 
     if (-not $Codec) {
@@ -491,7 +491,7 @@ function Collect-InteractiveInstallOptions {
 function Install-DeskGoAutostart {
     $architecture = Get-CurrentArchitecture
     $resolvedVersion = Normalize-Version -Value $Version
-    $relayInput = if ([string]::IsNullOrWhiteSpace($RelayServer)) { 'wss://deskgo.zty8.cn/api/desktop' } else { $RelayServer }
+    $relayInput = if ([string]::IsNullOrWhiteSpace($RelayServer)) { 'wss://deskgo.ystone.us/api/desktop' } else { $RelayServer }
     $resolvedRelay = Normalize-RelayServerUrl -Value $relayInput
     $resolvedCodec = if ([string]::IsNullOrWhiteSpace($Codec)) { 'jpeg' } else { $Codec.ToLowerInvariant() }
     Ensure-CodecSupported -CodecValue $resolvedCodec

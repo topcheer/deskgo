@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeskGo Relay - Multi-architecture Remote Access</title>
+    <title>DeskGo - Open your computer from a browser</title>
     <style>
         :root {
             color-scheme: light;
@@ -625,6 +625,40 @@
             margin-top: 20px;
         }
 
+        .command-head {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .command-label {
+            color: var(--text);
+            font-weight: 700;
+            font-size: 0.96rem;
+        }
+
+        .copy-button {
+            border: 1px solid rgba(99, 102, 241, 0.18);
+            background: rgba(255, 255, 255, 0.82);
+            color: var(--primary-strong);
+            box-shadow: 0 12px 24px rgba(99, 102, 241, 0.12);
+            cursor: pointer;
+        }
+
+        .copy-button:hover,
+        .copy-button:focus-visible {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(99, 102, 241, 0.28);
+        }
+
+        .copy-button:focus-visible {
+            outline: 3px solid rgba(14, 165, 233, 0.28);
+            outline-offset: 2px;
+        }
+
         .download-card ul,
         .feature-card ul {
             margin: 16px 0 0;
@@ -655,9 +689,64 @@
             font-family: "SFMono-Regular", SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
 
+        .command-head + .command-snippet {
+            margin-top: 12px;
+        }
+
         .mini-note {
             margin-top: 16px !important;
             font-size: 0.94rem;
+        }
+
+        .advanced-panel {
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .advanced-panel details {
+            padding: 24px;
+        }
+
+        .advanced-panel summary {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            cursor: pointer;
+            color: var(--text);
+            font-weight: 700;
+        }
+
+        .advanced-panel summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .advanced-panel summary::after {
+            content: "+";
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary-strong);
+            font-size: 1.1rem;
+            flex: none;
+        }
+
+        .advanced-panel details[open] summary::after {
+            content: "−";
+        }
+
+        .advanced-panel p {
+            margin-top: 14px;
+        }
+
+        .advanced-panel .downloads,
+        .advanced-panel .download-empty {
+            margin-top: 20px;
         }
 
         .download-actions {
@@ -816,17 +905,17 @@
             <div class="brand">
                 <span class="brand-mark" aria-hidden="true"></span>
                 <div class="brand-copy">
-                    <span>DeskGo Relay</span>
-                    <strong>Multi-architecture remote access</strong>
+                    <span>DeskGo</span>
+                    <strong>Browser-based remote desktop</strong>
                 </div>
             </div>
             <nav class="nav" aria-label="Primary navigation">
                 <a href="#session">Connect</a>
-                <a href="#downloads">Downloads</a>
+                <a href="#downloads">Get the app</a>
                 <a href="#autostart">Autostart</a>
-                <a href="#features">Capabilities</a>
-                <a href="#steps">Workflow</a>
-                <a href="{{ .ReadmeENURL }}" class="ghost-button">Docs</a>
+                <a href="#features">Use cases</a>
+                <a href="#steps">3 steps</a>
+                <a href="{{ .ReadmeENURL }}" class="ghost-button">Help</a>
                 <a href="/" class="ghost-button" lang="zh-CN">Chinese</a>
             </nav>
         </header>
@@ -834,28 +923,29 @@
         <main>
             <section class="hero">
                 <div class="hero-card hero-copy">
-                    <span class="eyebrow">Desktop CLI / Relay / Bilingual Web</span>
-                    <h1>One build pipeline, broader coverage for desktop clients and relay deployments.</h1>
+                    <span class="eyebrow">Simple remote access for real people</span>
+                    <h1>Open your other computer with nothing more than a browser.</h1>
                     <p>
-                        DeskGo Relay now ships multi-architecture desktop CLIs for the three primary desktop operating systems, a broader relay server matrix, bilingual web entry points, and online autostart installers you can execute directly.
-                        The download area automatically reflects the artifacts that are actually present in the current release directory, with SHA256 checksums alongside them.
+                        Start DeskGo on the computer you want to reach, keep the session name it shows,
+                        and then open that computer from a browser. It works well for remote work,
+                        quick support, and opening the home computer you use every day.
                     </p>
                     <div class="hero-actions">
-                        <a href="#session" class="primary-button">Open session</a>
-                        <a href="#autostart" class="ghost-button">Install autostart</a>
+                        <a href="#session" class="primary-button">Enter a session name</a>
+                        <a href="#downloads" class="ghost-button">Download DeskGo</a>
                     </div>
                     <div class="stats" aria-label="Key metrics">
                         <div class="stat-card">
-                            <strong>{{ .DesktopArtifactCount }} desktop builds</strong>
-                            <span>Desktop releases across macOS, Windows, and Linux architecture variants.</span>
+                            <strong>Browser-only viewing</strong>
+                            <span>You can open the desktop from a browser without another viewer app.</span>
                         </div>
                         <div class="stat-card">
-                            <strong>{{ .RelayArtifactCount }} relay builds</strong>
-                            <span>Relay binaries for Intel, ARM, RISC-V, and common Linux server platforms.</span>
+                            <strong>Easy session names</strong>
+                            <span>Session names are case-insensitive, so they are simpler to remember and share.</span>
                         </div>
                         <div class="stat-card">
-                            <strong>Chinese / English</strong>
-                            <span>Both the landing page and the session page are available in English for cross-team rollout and support.</span>
+                            <strong>Autostart for familiar computers</strong>
+                            <span>Great for home PCs, office desktops, and laptops you open often.</span>
                         </div>
                     </div>
                 </div>
@@ -866,12 +956,12 @@
                             <div class="window-dots" aria-hidden="true">
                                 <span></span><span></span><span></span>
                             </div>
-                            <span>DeskGo Relay Console</span>
+                            <span>How to use DeskGo</span>
                         </div>
                         <div class="window-body">
                             <div class="preview-toolbar">
-                                <div class="preview-chip"><span class="dot"></span> {{ .DesktopArtifactCount }} CLI Builds</div>
-                                <div class="preview-chip">{{ .RelayArtifactCount }} Relay Builds</div>
+                                <div class="preview-chip"><span class="dot"></span> Step 1: Start it on the target computer</div>
+                                <div class="preview-chip">Step 2: Open the session in a browser</div>
                             </div>
                             <div class="preview-grid">
                                 <div class="preview-stage">
@@ -884,9 +974,9 @@
                                     </div>
                                 </div>
                                 <div class="preview-panel">
-                                    <div class="panel-row">The site automatically lists the CLI and relay architectures found in the current artifact directory.</div>
-                                    <div class="panel-row">Session pages are bilingual and proactively notify viewers when the CLI disconnects.</div>
-                                    <div class="panel-row">The one-command build script emits release packages and SHA256SUMS.txt together.</div>
+                                    <div class="panel-row">Download and start DeskGo on the computer you want to reach.</div>
+                                    <div class="panel-row">Keep the session name it shows, or copy the direct viewer link.</div>
+                                    <div class="panel-row">Open a browser, enter the session name, and the desktop appears when the computer is online.</div>
                                 </div>
                             </div>
                         </div>
@@ -897,28 +987,28 @@
             <section class="section" id="session">
                 <div class="section-heading">
                     <div>
-                        <h2>Enter a session ID and jump straight into the desktop stream.</h2>
-                        <p>Use this when the desktop CLI is already running. The English route uses the same session IDs as the default Chinese entry.</p>
+                        <h2>Enter a session name and go straight to the desktop.</h2>
+                        <p>If the target computer is already running DeskGo, this is the fastest path in. The same session name works on both language versions of the site.</p>
                     </div>
                 </div>
                 <div class="panel session-layout">
                     <div>
                         <form class="session-form" id="sessionForm">
-                            <input id="sessionInput" name="session" type="text" autocomplete="off" placeholder="Example: deskgo-demo-001" aria-label="Session ID">
-                            <button type="submit">Connect session</button>
+                            <input id="sessionInput" name="session" type="text" autocomplete="off" placeholder="Example: home-pc" aria-label="Session ID">
+                            <button type="submit">Open desktop</button>
                         </form>
                         <p class="session-note">
-                            When the CLI starts, it prints the session ID and viewer URL. You can also share that link directly with viewers.
+                            When DeskGo starts on the desktop side, it shows the session name and a direct viewer link. You can share that link as-is.
                         </p>
                     </div>
                     <div class="session-tips">
                         <div class="session-tip">
-                            <strong>Keep the page open while waiting</strong>
-                            <p>If the desktop side has not connected yet, the page stays in a waiting state and switches into streaming automatically once the client joins.</p>
+                            <strong>Not online yet? Just leave the page open</strong>
+                            <p>If the desktop app has not connected yet, the page stays in a waiting state and switches into the live desktop automatically when it appears.</p>
                         </div>
                         <div class="session-tip">
-                            <strong>Viewer feedback on disconnect</strong>
-                            <p>If the CLI exits, the session ends, or the connection drops, the viewer closes immediately and shows recovery guidance.</p>
+                            <strong>Clear feedback when something stops</strong>
+                            <p>If the desktop app exits, the session ends, or the connection drops, the viewer tells you right away instead of pretending everything is still connected.</p>
                         </div>
                     </div>
                 </div>
@@ -927,19 +1017,16 @@
             <section class="section" id="downloads">
                 <div class="section-heading">
                     <div>
-                        <h2>Download the multi-architecture release matrix.</h2>
-                        <p>The one-command build script emits Desktop CLI packages, relay server binaries, and SHA256 checksums, while the site reflects whatever is currently present in the downloads directory.</p>
+                        <h2>Download DeskGo for the computer you want to reach.</h2>
+                        <p>Most people only need the desktop app below. Download it to the target computer, start it there, and keep the session name it shows.</p>
                     </div>
                 </div>
                 <div class="download-section">
                     <div class="download-section-head">
                         <div>
-                            <h3>Desktop CLI releases</h3>
-                            <p>Desktop downloads now cover the three primary operating systems, with platform-aware behavior for native macOS capture, Windows input parity, and Linux H.264-first streaming.</p>
+                            <h3>Downloads for everyday users</h3>
+                            <p>For first-time setup, start it manually once so you can confirm the session name and connection. You can decide on autostart later.</p>
                         </div>
-                        {{ if .HasChecksums }}
-                        <a class="ghost-button" href="{{ .ChecksumURL }}">SHA256 checksums</a>
-                        {{ end }}
                     </div>
                     {{ if .DesktopDownloads }}
                     <div class="downloads">
@@ -967,55 +1054,59 @@
                         {{ end }}
                     </div>
                     {{ else }}
-                    <div class="download-empty">There are no Desktop CLI artifacts in the current downloads directory yet. Run <code>./build.sh</code> first.</div>
+                    <div class="download-empty">There are no DeskGo app downloads available right now. Please refresh later or ask the deployment owner to update the downloads directory.</div>
                     {{ end }}
                 </div>
 
-                <div class="download-section">
-                    <div class="download-section-head">
-                        <div>
-                            <h3>Relay server releases</h3>
-                            <p>Relay binaries now cover a broader server matrix for local deployments, edge nodes, ARM hosts, and mixed Linux fleets.</p>
+                <div class="panel advanced-panel">
+                    <details>
+                        <summary>Advanced: I want to host the DeskGo service myself</summary>
+                        <p>If you are setting up your own service, a shared team entry point, or a self-hosted environment, the downloads below are for you. Everyday users can skip this.</p>
+                        <div class="inline-links">
+                            <a class="ghost-button" href="{{ .BuildMatrixENURL }}">Build matrix guide</a>
+                            <a class="ghost-button" href="{{ .RepositoryURL }}">GitHub repository</a>
+                            {{ if .HasChecksums }}
+                            <a class="ghost-button" href="{{ .ChecksumURL }}">SHA256 checksums</a>
+                            {{ end }}
                         </div>
-                        <a class="ghost-button" href="{{ .BuildMatrixENURL }}">Build matrix guide</a>
-                    </div>
-                    {{ if .RelayDownloads }}
-                    <div class="downloads">
-                        {{ range .RelayDownloads }}
-                        <article class="download-card">
-                            <div class="icon-wrap" aria-hidden="true">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                                    <path d="M12 3l7 4v10l-7 4-7-4V7l7-4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-                                    <path d="M12 7v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                                    <path d="M8 9.5l4 2.5 4-2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </div>
-                            <h3>{{ .TitleEN }}</h3>
-                            <p>{{ .DescriptionEN }}</p>
-                            <div class="download-meta">
-                                {{ range .Artifacts }}
-                                <span class="pill">{{ .Arch }}</span>
-                                {{ end }}
-                            </div>
-                            <div class="download-actions">
-                                {{ range .Artifacts }}
-                                <a class="download-link" href="{{ .URL }}">Download {{ .Arch }}</a>
-                                {{ end }}
-                            </div>
-                        </article>
+                        {{ if .RelayDownloads }}
+                        <div class="downloads">
+                            {{ range .RelayDownloads }}
+                            <article class="download-card">
+                                <div class="icon-wrap" aria-hidden="true">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 3l7 4v10l-7 4-7-4V7l7-4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                        <path d="M12 7v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                        <path d="M8 9.5l4 2.5 4-2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <h3>{{ .TitleEN }}</h3>
+                                <p>{{ .DescriptionEN }}</p>
+                                <div class="download-meta">
+                                    {{ range .Artifacts }}
+                                    <span class="pill">{{ .Arch }}</span>
+                                    {{ end }}
+                                </div>
+                                <div class="download-actions">
+                                    {{ range .Artifacts }}
+                                    <a class="download-link" href="{{ .URL }}">Download {{ .Arch }}</a>
+                                    {{ end }}
+                                </div>
+                            </article>
+                            {{ end }}
+                        </div>
+                        {{ else }}
+                        <div class="download-empty">There are no relay server downloads available right now. Please refresh later or ask the deployment owner to update the downloads directory.</div>
                         {{ end }}
-                    </div>
-                    {{ else }}
-                    <div class="download-empty">There are no relay server artifacts in the current downloads directory yet. Run <code>./build.sh</code> first.</div>
-                    {{ end }}
+                    </details>
                 </div>
             </section>
 
             <section class="section" id="autostart">
                 <div class="section-heading">
                     <div>
-                        <h2>Install autostart online in one step.</h2>
-                        <p>The recommended flow is to copy the GitHub online install commands below. The shell and PowerShell installers support both guided prompts and unattended flags, detect the current OS/architecture, download the matching CLI, verify SHA256, write a fixed session config, and register per-user autostart.</p>
+                        <h2>Want the computer to come online automatically?</h2>
+                        <p>These one-step installers are for computers you connect to often. Copy the command, run it once, and it will guide you through the address and fixed session name before enabling autostart after login.</p>
                     </div>
                 </div>
                 <div class="downloads">
@@ -1026,18 +1117,22 @@
                                 <path d="M10 8h8M10 12h8M10 16h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                             </svg>
                         </div>
-                        <h3>macOS / Linux installer</h3>
-                        <p>Targets the current logged-in user session: LaunchAgent on macOS, XDG Autostart by default on Linux, with optional <code>systemd --user</code>.</p>
+                        <h3>macOS / Linux one-step install</h3>
+                        <p>Great for personal Macs and Linux desktops. After setup, DeskGo starts automatically when that user logs in.</p>
                         <ul>
-                            <li>Supports guided install/uninstall and <code>--non-interactive</code> flag-based execution</li>
-                            <li>Lets you choose relay URL, fixed session name, codec, and release version</li>
-                            <li>The install command pulls the script from GitHub Raw, while the CLI binary comes from the GitHub latest release by default</li>
+                            <li>Supports guided install/uninstall and one-shot flags</li>
+                            <li>Lets you choose the DeskGo address, a fixed session name, and display settings</li>
+                            <li>Best for computers that should be ready after every desktop login</li>
                         </ul>
                         <div class="inline-links">
                             <a class="primary-button" href="{{ .AutostartShellURL }}">GitHub shell script</a>
                             <a class="ghost-button" href="{{ .AutostartGuideENURL }}">Full guide</a>
                         </div>
-                        <pre class="command-snippet"><code>rm -f /tmp/deskgo-autostart.sh
+                        <div class="command-head">
+                            <span class="command-label">Copy this install command</span>
+                            <button type="button" class="ghost-button copy-button" data-copy-target="autostart-shell-command" data-copy-default="Copy command" data-copy-success="Copied" data-copy-error="Copy failed">Copy command</button>
+                        </div>
+                        <pre class="command-snippet"><code id="autostart-shell-command">rm -f /tmp/deskgo-autostart.sh
 curl -fsSL -H 'Cache-Control: no-cache' "{{ .AutostartShellURL }}?ts=$(date +%s)" -o /tmp/deskgo-autostart.sh
 bash /tmp/deskgo-autostart.sh install</code></pre>
                     </article>
@@ -1049,18 +1144,22 @@ bash /tmp/deskgo-autostart.sh install</code></pre>
                                 <path d="M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                             </svg>
                         </div>
-                        <h3>Windows installer</h3>
-                        <p>Registers a per-user Scheduled Task at logon, which covers the usual desktop autostart flow without requiring administrator privileges.</p>
+                        <h3>Windows one-step install</h3>
+                        <p>Ideal for office and home Windows PCs. It sets DeskGo to start when the user signs in, without needing administrator privileges.</p>
                         <ul>
                             <li>Supports guided or unattended install, plus clean uninstall</li>
-                            <li>Downloads the matching Windows CLI asset and verifies <code>SHA256SUMS.txt</code></li>
-                            <li>The recommended codec for Windows autostart is currently <code>jpeg</code>, and the install command also pulls the script from GitHub Raw</li>
+                            <li>Automatically downloads the matching Windows build</li>
+                            <li>For Windows autostart, it is usually best to follow the installer's default recommended setting</li>
                         </ul>
                         <div class="inline-links">
                             <a class="primary-button" href="{{ .AutostartPowerShellURL }}">GitHub PowerShell script</a>
                             <a class="ghost-button" href="{{ .AutostartGuideENURL }}">Full guide</a>
                         </div>
-                        <pre class="command-snippet"><code>$script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
+                        <div class="command-head">
+                            <span class="command-label">Copy this install command</span>
+                            <button type="button" class="ghost-button copy-button" data-copy-target="autostart-powershell-command" data-copy-default="Copy command" data-copy-success="Copied" data-copy-error="Copy failed">Copy command</button>
+                        </div>
+                        <pre class="command-snippet"><code id="autostart-powershell-command">$script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
 $uri = "{{ .AutostartPowerShellURL }}?ts=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
 Remove-Item $script -ErrorAction SilentlyContinue
 Invoke-WebRequest $uri -UseBasicParsing -Headers @{ 'Cache-Control' = 'no-cache' } -OutFile $script
@@ -1073,14 +1172,14 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
                                 <path d="M9.5 12.5l1.8 1.8 3.7-4.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </div>
-                        <h3>Before you roll it out</h3>
-                        <p>This section shows the user-facing GitHub online install flow directly; successful installation still depends on the release assets matching the script contract.</p>
+                        <h3>Prepare these two things first</h3>
+                        <p>The setup feels smoother when you decide these before you run the installer.</p>
                         <ul>
-                            <li>The latest release must contain the matching <code>deskgo-desktop-&lt;os&gt;-&lt;arch&gt;</code> asset and <code>SHA256SUMS.txt</code></li>
-                            <li>Autostart is intentionally scoped to the current logged-in desktop session, not a headless system service</li>
-                            <li>The installer writes configuration to <code>deskgo.json</code> in the install root, so it also works with older release CLIs that do not understand <code>-config</code></li>
+                            <li>A fixed session name you will remember later, such as <code>home-pc</code> or <code>office-main</code></li>
+                            <li>A DeskGo address the computer can reach, plus a computer that stays signed in to a desktop session</li>
+                            <li>If you only use DeskGo occasionally, a manual start is often simpler</li>
                         </ul>
-                        <p class="mini-note">For predictable fleet rollouts, pin <code>--version</code> and review the <a href="{{ .BuildMatrixENURL }}">build matrix</a>, <a href="{{ .AutostartGuideENURL }}">autostart guide</a>, and <a href="{{ .RepositoryURL }}">GitHub repository</a>.</p>
+                        <p class="mini-note">If you need advanced flags, self-hosting details, or repeatable rollout guidance, see the <a href="{{ .AutostartGuideENURL }}">autostart guide</a>, <a href="{{ .ReadmeENURL }}">README</a>, and <a href="{{ .RepositoryURL }}">GitHub repository</a>.</p>
                     </article>
                 </div>
             </section>
@@ -1088,8 +1187,8 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
             <section class="section" id="features">
                 <div class="section-heading">
                     <div>
-                        <h2>Improvements across release packaging, delivery UX, and bilingual access.</h2>
-                        <p>This update expands the architecture matrix while aligning the website, build pipeline, and core documentation around the same release entry point.</p>
+                        <h2>These everyday situations are where DeskGo fits best.</h2>
+                        <p>If what you really mean is “I want to open that computer from somewhere else,” it is usually one of these cases.</p>
                     </div>
                 </div>
                 <div class="features-grid">
@@ -1100,12 +1199,12 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
                                 <path d="M12 5v14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                             </svg>
                         </div>
-                        <h3>A broader release matrix</h3>
-                        <p>The Desktop CLI now covers more macOS, Windows, and Linux targets, while the relay server reaches additional Linux server platforms.</p>
+                        <h3>Open the home computer while you are away</h3>
+                        <p>Reach the computer at home to grab a file, open a program, or do a quick task while travelling or working elsewhere.</p>
                         <ul>
-                            <li>Multi-architecture releases for the three desktop OSes</li>
-                            <li>Relay binaries extended for server-oriented targets</li>
-                            <li>Download listings update automatically with each build</li>
+                            <li>Great for travel, errands, and remote work days</li>
+                            <li>The viewing side stays browser-only</li>
+                            <li>A fixed session name makes repeat access easier</li>
                         </ul>
                     </article>
                     <article class="feature-card">
@@ -1115,12 +1214,12 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
                                 <path d="M7 4h10v16H7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
                             </svg>
                         </div>
-                        <h3>Full bilingual web entry</h3>
-                        <p>Both the landing page and the session page now have English variants, making it easier to share the same entry point with distributed teams and external testers.</p>
+                        <h3>Return to the office desktop later</h3>
+                        <p>After hours or away from the office, open your usual workstation again from the browser and continue where you left off.</p>
                         <ul>
-                            <li>Chinese / English landing routes</li>
-                            <li>English session pages available directly</li>
-                            <li>Download guidance and architecture listings stay in sync</li>
+                            <li>Works well for fixed desks and personal workstations</li>
+                            <li>Autostart keeps it ready after login</li>
+                            <li>You can keep using the same session name</li>
                         </ul>
                     </article>
                     <article class="feature-card">
@@ -1130,12 +1229,12 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
                                 <path d="M9 17v3M15 17v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                             </svg>
                         </div>
-                        <h3>One-command builds for distribution</h3>
-                        <p><code>./build.sh</code> now emits runnable binaries for the current host, cross-architecture download packages, and SHA256 checksum output for direct distribution or relay image packaging.</p>
+                        <h3>Help a family member or teammate</h3>
+                        <p>When the other person does not care about technical details, it is easier to get them online first and then open the desktop from your browser.</p>
                         <ul>
-                            <li>CLI and relay packages built together</li>
-                            <li>Checksum output generated automatically</li>
-                            <li>Docker can serve the release directory directly</li>
+                            <li>Direct viewer links are easy to share</li>
+                            <li>Waiting and disconnect states are clearer</li>
+                            <li>Less setup to explain to non-technical people</li>
                         </ul>
                     </article>
                 </div>
@@ -1144,25 +1243,25 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
             <section class="section" id="steps">
                 <div class="section-heading">
                     <div>
-                        <h2>Build and deliver in three steps.</h2>
-                        <p>Whether you are distributing clients or deploying the relay, the same build and access flow now applies.</p>
+                        <h2>Get started in three steps.</h2>
+                        <p>This is the simplest order for first-time use.</p>
                     </div>
                 </div>
                 <div class="steps-grid">
                     <article class="step-card">
                         <span class="step-index">1</span>
-                        <h3>Run the build script</h3>
-                        <p>Run <code>./build.sh</code> to produce the current-platform runnable binaries, Desktop CLI downloads, relay release packages, and SHA256SUMS.txt.</p>
+                        <h3>Download and run DeskGo</h3>
+                        <p>Download the desktop app on the computer you want to reach and start it once manually so you can confirm the connection and session name.</p>
                     </article>
                     <article class="step-card">
                         <span class="step-index">2</span>
-                        <h3>Deploy the relay</h3>
-                        <p>Start the local binary or Docker image; the site will expose the downloads directory automatically and provide both / and /en entry points.</p>
+                        <h3>Keep the session name</h3>
+                        <p>DeskGo shows the session name and viewer link when it starts. Later, you can keep that session name fixed if you want easier repeat access.</p>
                     </article>
                     <article class="step-card">
                         <span class="step-index">3</span>
-                        <h3>Run the CLI and share the link</h3>
-                        <p>Run the matching CLI build on the desktop host, then open the viewer with either the session ID or the generated direct link.</p>
+                        <h3>Open it from a browser</h3>
+                        <p>Enter the session name in the browser to open the desktop, or share the direct link so the other person does not have to type anything.</p>
                     </article>
                 </div>
             </section>
@@ -1170,24 +1269,70 @@ powershell -ExecutionPolicy Bypass -File $script install</code></pre>
 
         <footer class="footer-grid">
             <section class="footer-card">
-                <h3>Built for release distribution</h3>
-                <p>The relay is more than a session forwarder now: it also acts as the unified entry point for multi-architecture downloads, bilingual pages, online autostart guidance, and the browser viewing experience.</p>
+                <h3>Start with these three areas</h3>
+                <p>If your goal is simply to open your own computer remotely, focus on the session box, the download section, and the autostart section. You do not need the rest first.</p>
                 <div class="footer-links">
-                    <a href="#downloads">Download matrix</a>
+                    <a href="#session">Open a session</a>
+                    <a href="#downloads">Download the app</a>
                     <a href="#autostart">Autostart</a>
-                    <a href="{{ .ReadmeZHURL }}">README ZH</a>
-                    <a href="{{ .ReadmeENURL }}">README EN</a>
+                    <a href="{{ .ReadmeENURL }}">Help guide</a>
                 </div>
             </section>
             <section class="footer-card">
-                <h3>Deployment note</h3>
-                <p>The recommended online flow is to fetch the installer from GitHub Raw, but successful installation still depends on the latest release containing the matching CLI asset and <code>SHA256SUMS.txt</code>. For repeatable rollouts, pin <code>--version</code>.</p>
-                <p class="fineprint">DeskGo Relay · Multi-architecture delivery point · H.264 / JPEG auto negotiation · Bilingual web entry</p>
+                <h3>Need the advanced details?</h3>
+                <p>If you plan to self-host the service, roll out DeskGo to many computers, or review detailed flags and release information, the docs are still available.</p>
+                <p class="fineprint">DeskGo · Browser remote desktop entry · Easy session names · Autostart installers · Bilingual pages</p>
             </section>
         </footer>
     </div>
 
     <script>
+        async function copyTextToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                return;
+            }
+
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+
+            const copied = document.execCommand('copy');
+            textarea.remove();
+
+            if (!copied) {
+                throw new Error('copy failed');
+            }
+        }
+
+        document.querySelectorAll('[data-copy-target]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                const target = document.getElementById(button.dataset.copyTarget);
+                if (!target) {
+                    return;
+                }
+
+                const defaultLabel = button.dataset.copyDefault || button.textContent;
+                const successLabel = button.dataset.copySuccess || defaultLabel;
+                const errorLabel = button.dataset.copyError || defaultLabel;
+
+                try {
+                    await copyTextToClipboard(target.textContent.trim());
+                    button.textContent = successLabel;
+                } catch (error) {
+                    button.textContent = errorLabel;
+                }
+
+                window.setTimeout(() => {
+                    button.textContent = defaultLabel;
+                }, 1800);
+            });
+        });
+
         document.getElementById('sessionForm').addEventListener('submit', (event) => {
             event.preventDefault();
             const sessionInput = document.getElementById('sessionInput');

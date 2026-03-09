@@ -8,7 +8,7 @@ func TestResolveRelayProxyUsesExplicitProxy(t *testing.T) {
 	t.Setenv("WS_PROXY", "")
 	t.Setenv("WSS_PROXY", "")
 
-	proxyURL, err := resolveRelayProxy("wss://deskgo.zty8.cn/api/desktop/demo", "http://proxy.internal:8080")
+	proxyURL, err := resolveRelayProxy("wss://deskgo.ystone.us/api/desktop/demo", "http://proxy.internal:8080")
 	if err != nil {
 		t.Fatalf("resolveRelayProxy returned error: %v", err)
 	}

@@ -53,6 +53,8 @@ type ControlEvent struct {
 	Type         string `json:"type"`
 	EventType    string `json:"event_type"` // mouse, keyboard, canvas_size
 	KeyCode      int    `json:"key_code"`
+	Code         string `json:"code,omitempty"`
+	KeyDown      *bool  `json:"key_down,omitempty"`
 	MouseX       int    `json:"mouse_x"`
 	MouseY       int    `json:"mouse_y"`
 	MouseMask    int    `json:"mouse_mask"`
@@ -77,6 +79,7 @@ type DesktopCapture struct {
 	jpegQuality    int
 	frameCount     int
 	lastFrameTime  time.Time
+	lastStreamLog  time.Time
 
 	// H.264 编码器
 	h264Encoder     H264Encoder
@@ -88,13 +91,22 @@ type DesktopCapture struct {
 	pendingStart    bool // 捕获循环停止后是否需要立即重启
 
 	// 鼠标状态追踪
-	mouseLeftDown   bool
-	mouseRightDown  bool
-	mouseMiddleDown bool
+	mouseLeftDown     bool
+	mouseRightDown    bool
+	mouseMiddleDown   bool
+	mouseScrollUpDown bool
+	mouseScrollDnDown bool
+	lastMouseX        int
+	lastMouseY        int
+
+	// 键盘状态追踪
+	pressedKeys map[int]bool
 
 	// Web端Canvas尺寸（用于坐标映射）
-	canvasWidth  int
-	canvasHeight int
+	canvasWidth    int
+	canvasHeight   int
+	displayOriginX int
+	displayOriginY int
 
 	// Relay 代理配置
 	proxyURL string
@@ -145,6 +157,7 @@ func main() {
 			Bitrate:     config.H264Bitrate,
 			KeyInterval: config.H264KeyInterval,
 		},
+		pressedKeys: make(map[int]bool),
 	}
 
 	// 初始化 H.264 编码器（如果需要）
@@ -198,7 +211,7 @@ func printHeader(sessionID, configPath, serverURL string, display, fps, quality 
 }
 
 // getWebURL 从 WebSocket URL 生成 Web URL
-// 例如: wss://deskgo.zty8.cn/api/desktop -> https://deskgo.zty8.cn
+// 例如: wss://deskgo.ystone.us/api/desktop -> https://deskgo.ystone.us
 func getWebURL(wsURL string) string {
 	return relayWebBaseURL(wsURL)
 }
@@ -305,18 +318,19 @@ func (c *DesktopCapture) captureAndSend() error {
 	start := time.Now()
 
 	// 捕获屏幕
-	img, err := screenshot.CaptureRect(c.getBounds())
+	bounds := c.getBounds()
+	img, err := screenshot.CaptureRect(bounds)
 	if err != nil {
 		return fmt.Errorf("捕获失败: %w", err)
 	}
-	log.Printf("📸 屏幕捕获成功: %dx%d", img.Bounds().Dx(), img.Bounds().Dy())
 
 	// 更新帧信息
 	c.mu.Lock()
 	c.width = img.Bounds().Dx()
 	c.height = img.Bounds().Dy()
+	c.displayOriginX = bounds.Min.X
+	c.displayOriginY = bounds.Min.Y
 	c.frameCount++
-	log.Printf("📊 帧 #%d 准备编码 (尺寸: %dx%d)", c.frameCount, c.width, c.height)
 
 	// 首次初始化 H.264 编码器（需要知道实际分辨率）
 	if c.useH264 && c.h264Encoder != nil && !c.h264Initialized {
@@ -368,7 +382,6 @@ func (c *DesktopCapture) captureAndSend() error {
 
 	if currentUseH264 {
 		// H.264 编码路径
-		log.Printf("🔹 调用 H.264 编码器: forceKeyFrame=%v", forceKeyFrame)
 		h264Data, _, sps, pps, err := c.h264Encoder.Encode(img, forceKeyFrame)
 		if err != nil {
 			// 编码失败，回退到 JPEG
@@ -388,30 +401,10 @@ func (c *DesktopCapture) captureAndSend() error {
 			// 浏览器通过独立的 SPS/PPS 字段配置解码器，帧数据保持纯 AVCC 视频负载。
 			finalH264Data := filteredH264Data
 			if actualIsKeyFrame {
-				if len(sps) > 0 && len(pps) > 0 {
-					log.Printf("🔍 [关键帧] 使用独立 SPS/PPS 配置: SPS=%d字节, PPS=%d字节, 视频=%d字节",
-						len(sps), len(pps), len(finalH264Data))
-				} else {
+				if len(sps) == 0 || len(pps) == 0 {
 					log.Printf("⚠️  [关键帧] 缺少 SPS/PPS: SPS=%d字节, PPS=%d字节", len(sps), len(pps))
 				}
 			}
-
-			// 打印最终数据的前32字节用于调试
-			if len(finalH264Data) >= 32 {
-				log.Printf("🔍 最终数据前32字节:")
-				for i := 0; i < 32; i += 16 {
-					start := i
-					end := i + 16
-					if end > len(finalH264Data) {
-						end = len(finalH264Data)
-					}
-					log.Printf("   %04d: %s", start,
-						strings.Replace(strings.ToUpper(fmt.Sprintf("% x", finalH264Data[start:end])), " ", " ", -1))
-				}
-			}
-
-			log.Printf("✅ H.264 编码成功: 原始=%d字节, 最终=%d字节, IDR=%v, 已提供SPS/PPS=%v",
-				len(h264Data), len(finalH264Data), actualIsKeyFrame, len(sps) > 0 && len(pps) > 0)
 
 			msg = DesktopMessage{
 				Type:       "frame",
@@ -460,16 +453,6 @@ func (c *DesktopCapture) captureAndSend() error {
 		return fmt.Errorf("发送失败: %w", err)
 	}
 
-	// 确认发送成功
-	if c.frameCount%10 == 0 {
-		codecType := "JPEG"
-		if msg.Codec == "h264" {
-			codecType = "H.264"
-		}
-		log.Printf("📤 已发送帧 #%d: %s, %d字节 JSON", c.frameCount, codecType, len(jsonData))
-	}
-
-	// 性能日志
 	elapsed := time.Since(start)
 	fps := 1.0 / elapsed.Seconds()
 	sizeKB := 0
@@ -478,15 +461,7 @@ func (c *DesktopCapture) captureAndSend() error {
 	} else if msg.Codec == "h264" {
 		sizeKB = len(msg.H264Data) / 1024
 	}
-
-	if c.frameCount%30 == 0 {
-		codecInfo := "JPEG"
-		if msg.Codec == "h264" {
-			codecInfo = "H.264"
-		}
-		log.Printf("📊 帧 #%d: %dx%d, %s, %d KB, %.2f ms (%.1f fps)",
-			c.frameCount, c.width, c.height, codecInfo, sizeKB, elapsed.Milliseconds(), fps)
-	}
+	c.maybeLogStreamSummary(msg, sizeKB, fps, elapsed)
 
 	return nil
 }
@@ -496,6 +471,7 @@ func (c *DesktopCapture) receiveControlLoop() {
 		// 接收消息（使用 gorilla/websocket）
 		messageType, msg, err := c.conn.ReadMessage()
 		if err != nil {
+			c.releaseInputState()
 			if err != io.EOF {
 				log.Printf("❌ 接收控制事件失败: %v", err)
 			}
@@ -528,9 +504,6 @@ func (c *DesktopCapture) handleControlEvent(event *ControlEvent) {
 	// Type: "codec_support", "request_keyframe", "input" 等
 	// EventType: 仅用于 input 消息的子类型（"mouse", "keyboard", "canvas_size"）
 
-	// 调试：打印收到的所有消息
-	log.Printf("🔍 [DEBUG] 收到控制事件: Type=%s, EventType=%s", event.Type, event.EventType)
-
 	switch event.Type {
 	case "start_capture":
 		// Relay通知开始捕获（当有Web客户端连接时）
@@ -559,6 +532,7 @@ func (c *DesktopCapture) handleControlEvent(event *ControlEvent) {
 		c.running = false
 		c.pendingStart = false
 		c.mu.Unlock()
+		c.releaseInputState()
 
 	case "input":
 		// 输入事件（鼠标、键盘、Canvas尺寸）
@@ -577,36 +551,28 @@ func (c *DesktopCapture) handleControlEvent(event *ControlEvent) {
 				c.mu.Unlock()
 				log.Printf("📐 Canvas尺寸更新: %dx%d", event.CanvasWidth, event.CanvasHeight)
 			}
+		case "reset":
+			c.releaseInputState()
 		default:
 			log.Printf("⚠️  未知输入事件类型: %s", event.EventType)
 		}
 
 	case "codec_support":
 		// 浏览器编解码器支持
-		log.Printf("🔍 [DEBUG] 收到 codec_support 消息: H.264=%v, JPEG=%v", event.H264Supported, event.JPEPSupported)
 		c.mu.Lock()
 		previousUseH264 := c.useH264
 		// 只有在配置中指定了 H.264 且浏览器支持时才使用 H.264
 		if event.H264Supported && c.useH264 {
-			log.Printf("✅ 浏览器支持 H.264，继续使用 H.264 编码")
-			log.Printf("🔍 [DEBUG] h264Initialized=%v", c.h264Initialized)
-
 			// 强制发送一个关键帧，确保新连接的浏览器能解码
 			if c.h264Initialized {
-				log.Printf("🎬 H.264 已初始化，立即强制发送关键帧")
 				c.forceKeyFrame = true
-				log.Printf("🔍 [DEBUG] forceKeyFrame 已设置为 true")
 			} else {
-				log.Printf("⏳ H.264 编码器未初始化，将在初始化后强制关键帧")
 				c.pendingKeyFrame = true
-				log.Printf("🔍 [DEBUG] pendingKeyFrame 已设置为 true")
 			}
 		} else if c.useH264 && !event.H264Supported {
 			log.Printf("⚠️  浏览器不支持 H.264，回退到 JPEG")
 			c.useH264 = false
 			c.h264Initialized = false
-		} else {
-			log.Printf("ℹ️  浏览器编解码器支持: H.264=%v, JPEG=%v", event.H264Supported, event.JPEPSupported)
 		}
 		c.mu.Unlock()
 
@@ -621,15 +587,9 @@ func (c *DesktopCapture) handleControlEvent(event *ControlEvent) {
 
 	case "request_keyframe":
 		// 浏览器请求立即发送关键帧
-		log.Printf("🔍 [DEBUG] 收到 request_keyframe 消息")
 		c.mu.Lock()
-		log.Printf("🔍 [DEBUG] h264Initialized=%v, useH264=%v", c.h264Initialized, c.useH264)
 		if c.h264Initialized && c.useH264 {
-			log.Printf("🎬 收到浏览器关键帧请求，强制发送关键帧")
 			c.forceKeyFrame = true
-			log.Printf("🔍 [DEBUG] forceKeyFrame 已设置为 true")
-		} else {
-			log.Printf("⚠️  无法强制关键帧: h264Initialized=%v, useH264=%v", c.h264Initialized, c.useH264)
 		}
 		c.mu.Unlock()
 
@@ -648,6 +608,11 @@ func (c *DesktopCapture) handleMouseEvent(event *ControlEvent) {
 
 	// 映射坐标：Canvas → 屏幕
 	screenX, screenY := c.mapCoordsToScreen(event.MouseX, event.MouseY, event.CanvasWidth, event.CanvasHeight)
+	c.mu.Lock()
+	c.lastMouseX = screenX
+	c.lastMouseY = screenY
+	c.mu.Unlock()
+	platformLogMouseControlEvent(event, screenX, screenY)
 
 	// 移动鼠标
 	if err := c.moveMouse(screenX, screenY); err != nil {
@@ -661,25 +626,55 @@ func (c *DesktopCapture) handleMouseEvent(event *ControlEvent) {
 }
 
 func (c *DesktopCapture) handleKeyboardEvent(event *ControlEvent) {
-	jsKeyCode := event.KeyCode
-	if jsKeyCode < 0 {
-		jsKeyCode = -jsKeyCode
-	}
-
-	platformKeyCode := mapJSKeyCodeToPlatformKeyCode(jsKeyCode)
+	platformKeyCode := resolvePlatformKeyCode(event)
 	if platformKeyCode == -1 {
-		log.Printf("⚠️  未映射的按键或当前平台输入不可用: JS keyCode=%d", jsKeyCode)
+		log.Printf("⚠️  未映射的按键或当前平台输入不可用: JS keyCode=%d, code=%q", normalizeBrowserKeyCode(event.KeyCode), event.Code)
+		return
+	}
+	platformLogKeyboardControlEvent(event, platformKeyCode, keyEventIsDown(event))
+
+	if !platformTracksKeyState() {
+		if !keyEventIsDown(event) {
+			if err := c.keyToggle(platformKeyCode, false); err != nil {
+				log.Printf("❌ 键盘释放失败: %v", err)
+			}
+			return
+		}
+
+		if err := c.keyTap(platformKeyCode); err != nil {
+			log.Printf("❌ 键盘按键失败: %v", err)
+		}
 		return
 	}
 
-	// 处理按键释放（负数表示释放）
-	if event.KeyCode < 0 {
-		c.keyToggle(platformKeyCode, false)
+	if !keyEventIsDown(event) {
+		c.mu.Lock()
+		delete(c.pressedKeys, platformKeyCode)
+		c.mu.Unlock()
+
+		if err := c.keyToggle(platformKeyCode, false); err != nil {
+			log.Printf("❌ 键盘释放失败: %v", err)
+		}
 		return
 	}
 
-	// 按下键
-	c.keyTap(platformKeyCode)
+	c.mu.Lock()
+	if c.pressedKeys == nil {
+		c.pressedKeys = make(map[int]bool)
+	}
+	if c.pressedKeys[platformKeyCode] {
+		c.mu.Unlock()
+		return
+	}
+	c.pressedKeys[platformKeyCode] = true
+	c.mu.Unlock()
+
+	if err := c.keyToggle(platformKeyCode, true); err != nil {
+		c.mu.Lock()
+		delete(c.pressedKeys, platformKeyCode)
+		c.mu.Unlock()
+		log.Printf("❌ 键盘按下失败: %v", err)
+	}
 }
 
 // mapCoordsToScreen 将Canvas坐标映射到屏幕坐标
@@ -687,6 +682,8 @@ func (c *DesktopCapture) mapCoordsToScreen(canvasX, canvasY, canvasW, canvasH in
 	c.mu.Lock()
 	screenW := c.width
 	screenH := c.height
+	screenOriginX := c.displayOriginX
+	screenOriginY := c.displayOriginY
 	if canvasW <= 0 {
 		canvasW = c.canvasWidth
 	}
@@ -695,9 +692,10 @@ func (c *DesktopCapture) mapCoordsToScreen(canvasX, canvasY, canvasW, canvasH in
 	}
 	c.mu.Unlock()
 
-	// 如果没有Canvas尺寸，直接返回原坐标（旧版本兼容）
+	// 如果没有Canvas尺寸，按当前显示器原点做兼容映射
 	if canvasW == 0 || canvasH == 0 {
-		return canvasX, canvasY
+		return clampScreenCoordinate(screenOriginX+canvasX, screenOriginX, screenW),
+			clampScreenCoordinate(screenOriginY+canvasY, screenOriginY, screenH)
 	}
 
 	// 计算映射比例
@@ -705,21 +703,11 @@ func (c *DesktopCapture) mapCoordsToScreen(canvasX, canvasY, canvasW, canvasH in
 	scaleY := float64(screenH) / float64(canvasH)
 
 	// 映射坐标
-	screenX := int(float64(canvasX) * scaleX)
-	screenY := int(float64(canvasY) * scaleY)
+	screenX := screenOriginX + int(float64(canvasX)*scaleX)
+	screenY := screenOriginY + int(float64(canvasY)*scaleY)
 
-	// 边界检查
-	if screenX < 0 {
-		screenX = 0
-	} else if screenX >= screenW {
-		screenX = screenW - 1
-	}
-
-	if screenY < 0 {
-		screenY = 0
-	} else if screenY >= screenH {
-		screenY = screenH - 1
-	}
+	screenX = clampScreenCoordinate(screenX, screenOriginX, screenW)
+	screenY = clampScreenCoordinate(screenY, screenOriginY, screenH)
 
 	return screenX, screenY
 }
@@ -730,13 +718,35 @@ func (c *DesktopCapture) moveMouse(x, y int) error {
 
 // handleMouseButton 处理鼠标按钮
 func (c *DesktopCapture) handleMouseButton(mask int, x, y int) error {
-	if err := c.syncMouseButton("left", mask&1 != 0, &c.mouseLeftDown, x, y); err != nil {
+	state := decodeMouseMask(mask)
+
+	if state.ScrollUp {
+		if err := platformMouseButton("scroll_up", true, x, y); err != nil {
+			return err
+		}
+		if err := platformMouseButton("scroll_up", false, x, y); err != nil {
+			return err
+		}
+	}
+	if state.ScrollDown {
+		if err := platformMouseButton("scroll_down", true, x, y); err != nil {
+			return err
+		}
+		if err := platformMouseButton("scroll_down", false, x, y); err != nil {
+			return err
+		}
+	}
+
+	if err := c.syncMouseButton("left", state.Left, &c.mouseLeftDown, x, y); err != nil {
 		return err
 	}
-	if err := c.syncMouseButton("right", mask&2 != 0, &c.mouseRightDown, x, y); err != nil {
+	if err := c.syncMouseButton("right", state.Right, &c.mouseRightDown, x, y); err != nil {
 		return err
 	}
-	if err := c.syncMouseButton("middle", mask&4 != 0, &c.mouseMiddleDown, x, y); err != nil {
+	if err := c.syncMouseButton("middle", state.Middle, &c.mouseMiddleDown, x, y); err != nil {
+		return err
+	}
+	if err := platformSyncExtraMouseButtons(c, state, x, y); err != nil {
 		return err
 	}
 	return nil
@@ -763,6 +773,229 @@ func (c *DesktopCapture) keyToggle(keycode int, down bool) error {
 	return platformKeyToggle(keycode, down)
 }
 
+type mouseButtonState struct {
+	Left       bool
+	Right      bool
+	Middle     bool
+	ScrollUp   bool
+	ScrollDown bool
+}
+
+func decodeMouseMask(mask int) mouseButtonState {
+	return mouseButtonState{
+		Left:       mask&1 != 0,
+		Right:      mask&2 != 0,
+		Middle:     mask&4 != 0,
+		ScrollUp:   mask&8 != 0,
+		ScrollDown: mask&16 != 0,
+	}
+}
+
+func normalizeBrowserKeyCode(keyCode int) int {
+	if keyCode < 0 {
+		return -keyCode
+	}
+	return keyCode
+}
+
+func keyEventIsDown(event *ControlEvent) bool {
+	if event.KeyDown != nil {
+		return *event.KeyDown
+	}
+	return event.KeyCode >= 0
+}
+
+func mapControlEventToPlatformKeyCode(event *ControlEvent) int {
+	if event.Code != "" {
+		if jsKeyCode := browserCodeToLegacyKeyCode(event.Code); jsKeyCode != -1 {
+			if platformKeyCode := mapJSKeyCodeToPlatformKeyCode(jsKeyCode); platformKeyCode != -1 {
+				return platformKeyCode
+			}
+		}
+	}
+
+	jsKeyCode := normalizeBrowserKeyCode(event.KeyCode)
+	if jsKeyCode == 0 {
+		return -1
+	}
+
+	return mapJSKeyCodeToPlatformKeyCode(jsKeyCode)
+}
+
+func browserCodeToLegacyKeyCode(code string) int {
+	keyMap := map[string]int{
+		"Backspace":      8,
+		"Tab":            9,
+		"Enter":          13,
+		"ShiftLeft":      16,
+		"ShiftRight":     16,
+		"ControlLeft":    17,
+		"ControlRight":   17,
+		"AltLeft":        18,
+		"AltRight":       18,
+		"Pause":          19,
+		"CapsLock":       20,
+		"Escape":         27,
+		"Space":          32,
+		"PageUp":         33,
+		"PageDown":       34,
+		"End":            35,
+		"Home":           36,
+		"ArrowLeft":      37,
+		"ArrowUp":        38,
+		"ArrowRight":     39,
+		"ArrowDown":      40,
+		"Insert":         45,
+		"Delete":         46,
+		"MetaLeft":       91,
+		"MetaRight":      92,
+		"ContextMenu":    93,
+		"Numpad0":        96,
+		"Numpad1":        97,
+		"Numpad2":        98,
+		"Numpad3":        99,
+		"Numpad4":        100,
+		"Numpad5":        101,
+		"Numpad6":        102,
+		"Numpad7":        103,
+		"Numpad8":        104,
+		"Numpad9":        105,
+		"NumpadMultiply": 106,
+		"NumpadAdd":      107,
+		"NumpadSubtract": 109,
+		"NumpadDecimal":  110,
+		"NumpadDivide":   111,
+		"F1":             112,
+		"F2":             113,
+		"F3":             114,
+		"F4":             115,
+		"F5":             116,
+		"F6":             117,
+		"F7":             118,
+		"F8":             119,
+		"F9":             120,
+		"F10":            121,
+		"F11":            122,
+		"F12":            123,
+		"NumLock":        144,
+		"ScrollLock":     145,
+		"Semicolon":      186,
+		"Equal":          187,
+		"Comma":          188,
+		"Minus":          189,
+		"Period":         190,
+		"Slash":          191,
+		"Backquote":      192,
+		"BracketLeft":    219,
+		"Backslash":      220,
+		"BracketRight":   221,
+		"Quote":          222,
+	}
+
+	if keyCode, ok := keyMap[code]; ok {
+		return keyCode
+	}
+
+	if len(code) == 4 && strings.HasPrefix(code, "Key") {
+		ch := code[3]
+		if ch >= 'A' && ch <= 'Z' {
+			return int(ch)
+		}
+	}
+
+	if len(code) == 6 && strings.HasPrefix(code, "Digit") {
+		ch := code[5]
+		if ch >= '0' && ch <= '9' {
+			return int(ch)
+		}
+	}
+
+	return -1
+}
+
+func clampScreenCoordinate(value, origin, size int) int {
+	if size <= 0 {
+		return value
+	}
+
+	minValue := origin
+	maxValue := origin + size - 1
+
+	if value < minValue {
+		return minValue
+	}
+	if value > maxValue {
+		return maxValue
+	}
+	return value
+}
+
+func (c *DesktopCapture) releaseInputState() {
+	c.mu.Lock()
+	mouseX := c.lastMouseX
+	mouseY := c.lastMouseY
+	buttons := []struct {
+		name string
+		down bool
+	}{
+		{name: "left", down: c.mouseLeftDown},
+		{name: "right", down: c.mouseRightDown},
+		{name: "middle", down: c.mouseMiddleDown},
+		{name: "scroll_up", down: c.mouseScrollUpDown},
+		{name: "scroll_down", down: c.mouseScrollDnDown},
+	}
+	keys := make([]int, 0, len(c.pressedKeys))
+	for keycode := range c.pressedKeys {
+		keys = append(keys, keycode)
+	}
+	c.mouseLeftDown = false
+	c.mouseRightDown = false
+	c.mouseMiddleDown = false
+	c.mouseScrollUpDown = false
+	c.mouseScrollDnDown = false
+	c.pressedKeys = make(map[int]bool)
+	c.mu.Unlock()
+
+	for _, button := range buttons {
+		if !button.down {
+			continue
+		}
+		if err := platformMouseButton(button.name, false, mouseX, mouseY); err != nil {
+			log.Printf("⚠️  释放鼠标状态失败(%s): %v", button.name, err)
+		}
+	}
+
+	for _, keycode := range keys {
+		if err := c.keyToggle(keycode, false); err != nil {
+			log.Printf("⚠️  释放按键状态失败(%d): %v", keycode, err)
+		}
+	}
+}
+
+func (c *DesktopCapture) maybeLogStreamSummary(msg DesktopMessage, sizeKB int, fps float64, elapsed time.Duration) {
+	c.mu.Lock()
+	now := time.Now()
+	if !c.lastStreamLog.IsZero() && now.Sub(c.lastStreamLog) < time.Minute {
+		c.mu.Unlock()
+		return
+	}
+
+	c.lastStreamLog = now
+	frameCount := c.frameCount
+	width := c.width
+	height := c.height
+	c.mu.Unlock()
+
+	codecInfo := "JPEG"
+	if msg.Codec == "h264" {
+		codecInfo = "H.264"
+	}
+
+	elapsedMS := float64(elapsed.Microseconds()) / 1000.0
+	log.Printf("📺 串流状态: 帧=%d, 分辨率=%dx%d, 编码=%s, 最近一帧=%d KB, 编码耗时=%.2f ms, 估算FPS=%.1f",
+		frameCount, width, height, codecInfo, sizeKB, elapsedMS, fps)
+}
+
 func (c *DesktopCapture) getBounds() image.Rectangle {
 	bounds := screenshot.GetDisplayBounds(c.displayIndex)
 	if bounds.Dx() == 0 || bounds.Dy() == 0 {
@@ -775,6 +1008,7 @@ func (c *DesktopCapture) getBounds() image.Rectangle {
 
 func (c *DesktopCapture) Stop() {
 	c.running = false
+	c.releaseInputState()
 
 	// 关闭 H.264 编码器
 	if c.h264Encoder != nil {

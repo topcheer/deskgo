@@ -37,7 +37,7 @@ type Config struct {
 // DefaultConfig 返回默认配置
 func DefaultConfig() Config {
 	return Config{
-		Server:          "wss://deskgo.zty8.cn/api/desktop",
+		Server:          "wss://deskgo.ystone.us/api/desktop",
 		Proxy:           "",
 		Display:         0,                      // 主显示器
 		FPS:             15,                     // 15 fps

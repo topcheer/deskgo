@@ -4,12 +4,12 @@ DeskGo 是一个以 Go 编写的远程桌面串流方案，包含 Desktop CLI、
 当前仓库已经完成遗留实验代码清理，聚焦在原生桌面采集、WebSocket 中继、浏览器查看与多架构发布。
 
 - 上游仓库：<https://github.com/topcheer/deskgo>
-- 在线 Demo：<https://deskgo.zty8.cn>
+- 在线 Demo：<https://deskgo.ystone.us>
 - 英文文档：[`README.en.md`](README.en.md)
 - 自动运行说明：[`docs/AUTORUN.md`](docs/AUTORUN.md)
 - 构建矩阵：[`docs/BUILD_MATRIX.md`](docs/BUILD_MATRIX.md)
 - 部署指南：[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
-- 最新 Release Note 草案：[`docs/releases/v0.1.1.zh-CN.md`](docs/releases/v0.1.1.zh-CN.md)
+- 最新 Release Note 草案：[`docs/releases/v0.1.3.zh-CN.md`](docs/releases/v0.1.3.zh-CN.md)
 
 ## 核心能力
 
@@ -80,13 +80,13 @@ Linux / Windows：
 通过代理连接 Relay：
 
 ```bash
-./bin/deskgo-desktop -server wss://deskgo.zty8.cn/api/desktop -session demo -proxy http://proxy.internal:8080
+./bin/deskgo-desktop -server wss://deskgo.ystone.us/api/desktop -session demo -proxy http://proxy.internal:8080
 ```
 
 也可以使用环境变量：
 
 ```bash
-HTTPS_PROXY=http://proxy.internal:8080 ./bin/deskgo-desktop -server wss://deskgo.zty8.cn/api/desktop -session demo
+HTTPS_PROXY=http://proxy.internal:8080 ./bin/deskgo-desktop -server wss://deskgo.ystone.us/api/desktop -session demo
 ```
 
 ### 4. 安装自动运行
@@ -184,6 +184,10 @@ docker compose -f docker-compose.prod.yml up -d
 - [`docs/BUILD_MATRIX.en.md`](docs/BUILD_MATRIX.en.md)
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 - [`docs/DEPLOYMENT.en.md`](docs/DEPLOYMENT.en.md)
+- [`docs/releases/v0.1.3.zh-CN.md`](docs/releases/v0.1.3.zh-CN.md)
+- [`docs/releases/v0.1.3.md`](docs/releases/v0.1.3.md)
+- [`docs/releases/v0.1.2.zh-CN.md`](docs/releases/v0.1.2.zh-CN.md)
+- [`docs/releases/v0.1.2.md`](docs/releases/v0.1.2.md)
 - [`docs/releases/v0.1.1.zh-CN.md`](docs/releases/v0.1.1.zh-CN.md)
 - [`docs/releases/v0.1.1.md`](docs/releases/v0.1.1.md)
 - [`docs/releases/v0.1.0.zh-CN.md`](docs/releases/v0.1.0.zh-CN.md)

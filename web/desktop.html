@@ -498,6 +498,7 @@
         let receivedFrame = false;
         let sessionEnded = false;
         let lastDisconnectMessage = ui.defaultDisconnectReason;
+        let mouseButtonMask = 0;
 
         // H.264 解码器
         let h264Decoder = null;
@@ -569,6 +570,19 @@
                 canvas_width: metrics.width,
                 canvas_height: metrics.height
             };
+        }
+
+        function browserButtonToMask(button) {
+            switch (button) {
+                case 0:
+                    return 1;
+                case 1:
+                    return 4;
+                case 2:
+                    return 2;
+                default:
+                    return 0;
+            }
         }
 
         function sendViewerHandshake() {
@@ -1269,6 +1283,11 @@
             ws.send(JSON.stringify(message));
         }
 
+        function resetRemoteInputState() {
+            mouseButtonMask = 0;
+            sendInput('reset', {});
+        }
+
         // 发送Canvas尺寸
         function sendCanvasSize() {
             if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -1295,27 +1314,27 @@
             resizeObserver.observe(canvas);
 
             // 鼠标事件
-            let mouseButtonMask = 0;
+            const controlToggle = document.getElementById('controlToggle');
 
             canvas.addEventListener('mousedown', (e) => {
                 e.preventDefault();
-                if (!document.getElementById('controlToggle').checked) return;
+                if (!controlToggle.checked) return;
 
-                mouseButtonMask |= (1 << e.button);
+                mouseButtonMask |= browserButtonToMask(e.button);
                 sendInput('mouse', getPointerPayload(e, mouseButtonMask));
             });
 
             canvas.addEventListener('mouseup', (e) => {
                 e.preventDefault();
-                if (!document.getElementById('controlToggle').checked) return;
+                if (!controlToggle.checked) return;
 
-                mouseButtonMask &= ~(1 << e.button);
+                mouseButtonMask &= ~browserButtonToMask(e.button);
                 sendInput('mouse', getPointerPayload(e, mouseButtonMask));
             });
 
             canvas.addEventListener('mousemove', (e) => {
                 e.preventDefault();
-                if (!document.getElementById('controlToggle').checked) return;
+                if (!controlToggle.checked) return;
 
                 sendInput('mouse', getPointerPayload(e, mouseButtonMask));
             });
@@ -1325,10 +1344,16 @@
                 e.preventDefault();
             });
 
+            canvas.addEventListener('mouseleave', () => {
+                if (controlToggle.checked && mouseButtonMask !== 0) {
+                    resetRemoteInputState();
+                }
+            });
+
             // 滚轮事件
             canvas.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                if (!document.getElementById('controlToggle').checked) return;
+                if (!controlToggle.checked) return;
 
                 // Wheel mask: up=8, down=16
                 let scrollMask = 0;
@@ -1338,12 +1363,34 @@
                     scrollMask = 16;
                 }
 
-                sendInput('mouse', getPointerPayload(e, mouseButtonMask | scrollMask));
+                const scrollPayload = getPointerPayload(e, mouseButtonMask | scrollMask);
+                sendInput('mouse', scrollPayload);
 
                 // 发送滚轮复位
                 setTimeout(() => {
-                    sendInput('mouse', getPointerPayload(e, mouseButtonMask));
+                    sendInput('mouse', {
+                        ...scrollPayload,
+                        mouse_mask: mouseButtonMask
+                    });
                 }, 100);
+            });
+
+            controlToggle.addEventListener('change', () => {
+                if (!controlToggle.checked) {
+                    resetRemoteInputState();
+                }
+            });
+
+            window.addEventListener('blur', () => {
+                if (controlToggle.checked) {
+                    resetRemoteInputState();
+                }
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && controlToggle.checked) {
+                    resetRemoteInputState();
+                }
             });
         }
 
@@ -1351,13 +1398,13 @@
         document.addEventListener('keydown', (e) => {
             if (!document.getElementById('controlToggle').checked) return;
             e.preventDefault();
-            sendInput('keyboard', { key_code: e.keyCode });
+            sendInput('keyboard', { key_code: e.keyCode, code: e.code, key_down: true });
         });
 
         document.addEventListener('keyup', (e) => {
             if (!document.getElementById('controlToggle').checked) return;
             e.preventDefault();
-            sendInput('keyboard', { key_code: -e.keyCode }); // 负数表示释放
+            sendInput('keyboard', { key_code: -e.keyCode, code: e.code, key_down: false });
         });
 
         // 延迟统计
