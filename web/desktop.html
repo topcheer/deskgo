@@ -440,30 +440,30 @@
     </div>
 
     <script>
-        const sessionId = {{ printf "%q" .sessionID }};
+        const sessionId = {{ .sessionID }};
         const ui = {
-            statusConnecting: {{ printf "%q" .Strings.StatusConnecting }},
-            statusWaitingClient: {{ printf "%q" .Strings.StatusWaitingClient }},
-            statusStreaming: {{ printf "%q" .Strings.StatusStreaming }},
-            statusError: {{ printf "%q" .Strings.StatusError }},
-            statusSessionEnded: {{ printf "%q" .Strings.StatusSessionEnded }},
-            statusDisconnected: {{ printf "%q" .Strings.StatusDisconnected }},
-            loadingConnectingTitle: {{ printf "%q" .Strings.LoadingConnectingTitle }},
-            loadingWaitingTitle: {{ printf "%q" .Strings.LoadingWaitingTitle }},
-            loadingErrorTitle: {{ printf "%q" .Strings.LoadingErrorTitle }},
-            loadingErrorDetail: {{ printf "%q" .Strings.LoadingErrorDetail }},
-            loadingSessionEndedTitle: {{ printf "%q" .Strings.LoadingSessionEndedTitle }},
-            loadingSessionEndedDetail: {{ printf "%q" .Strings.LoadingSessionEndedDetail }},
-            loadingDisconnectedTitle: {{ printf "%q" .Strings.LoadingDisconnectedTitle }},
-            loadingDisconnectedDetail: {{ printf "%q" .Strings.LoadingDisconnectedDetail }},
-            sessionDetailPrefix: {{ printf "%q" .Strings.SessionDetailPrefix }},
-            retrySessionMessage: {{ printf "%q" .Strings.RetrySessionMessage }},
-            defaultDisconnectReason: {{ printf "%q" .Strings.DefaultDisconnectReason }},
-            desktopDisconnectedMessage: {{ printf "%q" .Strings.DesktopDisconnectedMessage }},
-            qualityExcellent: {{ printf "%q" .Strings.QualityExcellent }},
-            qualityGood: {{ printf "%q" .Strings.QualityGood }},
-            qualityFair: {{ printf "%q" .Strings.QualityFair }},
-            qualityPoor: {{ printf "%q" .Strings.QualityPoor }}
+            statusConnecting: {{ .Strings.StatusConnecting }},
+            statusWaitingClient: {{ .Strings.StatusWaitingClient }},
+            statusStreaming: {{ .Strings.StatusStreaming }},
+            statusError: {{ .Strings.StatusError }},
+            statusSessionEnded: {{ .Strings.StatusSessionEnded }},
+            statusDisconnected: {{ .Strings.StatusDisconnected }},
+            loadingConnectingTitle: {{ .Strings.LoadingConnectingTitle }},
+            loadingWaitingTitle: {{ .Strings.LoadingWaitingTitle }},
+            loadingErrorTitle: {{ .Strings.LoadingErrorTitle }},
+            loadingErrorDetail: {{ .Strings.LoadingErrorDetail }},
+            loadingSessionEndedTitle: {{ .Strings.LoadingSessionEndedTitle }},
+            loadingSessionEndedDetail: {{ .Strings.LoadingSessionEndedDetail }},
+            loadingDisconnectedTitle: {{ .Strings.LoadingDisconnectedTitle }},
+            loadingDisconnectedDetail: {{ .Strings.LoadingDisconnectedDetail }},
+            sessionDetailPrefix: {{ .Strings.SessionDetailPrefix }},
+            retrySessionMessage: {{ .Strings.RetrySessionMessage }},
+            defaultDisconnectReason: {{ .Strings.DefaultDisconnectReason }},
+            desktopDisconnectedMessage: {{ .Strings.DesktopDisconnectedMessage }},
+            qualityExcellent: {{ .Strings.QualityExcellent }},
+            qualityGood: {{ .Strings.QualityGood }},
+            qualityFair: {{ .Strings.QualityFair }},
+            qualityPoor: {{ .Strings.QualityPoor }}
         };
 
         function sessionDetailText(id) {

@@ -309,6 +309,7 @@ func broadcastToWebClients(session *Session, message []byte) {
 			log.Printf("转发到Web客户端失败 (%s): %v", userID, err)
 			removeWebClient(session, userID, clientConn)
 			clientConn.Close()
+			stopCaptureIfIdle(session)
 		}
 	}
 }
@@ -316,6 +317,18 @@ func broadcastToWebClients(session *Session, message []byte) {
 func sendStartCapture(session *Session, sessionID, userID string) error {
 	msgBytes, err := json.Marshal(DesktopMessage{
 		Type:      "start_capture",
+		SessionID: sessionID,
+		UserID:    userID,
+	})
+	if err != nil {
+		return err
+	}
+	return writeToCLI(session, msgBytes)
+}
+
+func sendStopCapture(session *Session, sessionID, userID string) error {
+	msgBytes, err := json.Marshal(DesktopMessage{
+		Type:      "stop_capture",
 		SessionID: sessionID,
 		UserID:    userID,
 	})
@@ -347,6 +360,23 @@ func writeToCLI(session *Session, message []byte) error {
 	return nil
 }
 
+func stopCaptureIfIdle(session *Session) {
+	session.mu.RLock()
+	clientCount := len(session.Clients)
+	hasCLI := session.ClientConn != nil
+	sessionID := session.ID
+	session.mu.RUnlock()
+
+	if clientCount > 0 || !hasCLI {
+		return
+	}
+
+	log.Printf("⏸️ 所有Web客户端已断开，通知CLI暂停捕获: %s", sessionID)
+	if err := sendStopCapture(session, sessionID, "relay"); err != nil && !errors.Is(err, errCLIUnavailable) {
+		log.Printf("通知CLI暂停捕获失败: %v", err)
+	}
+}
+
 func closeWebClientsWithNotice(session *Session, notice DesktopMessage) {
 	noticePayload, err := json.Marshal(notice)
 	if err != nil {
@@ -370,6 +400,7 @@ func closeWebClientsWithNotice(session *Session, notice DesktopMessage) {
 func handleWebMessages(conn *managedConn, session *Session, userID string, service *Service) {
 	defer func() {
 		removeWebClient(session, userID, conn)
+		stopCaptureIfIdle(session)
 		conn.Close()
 		log.Printf("❌ Web客户端断开: %s (用户: %s)", session.ID, userID)
 	}()

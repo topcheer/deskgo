@@ -8,7 +8,7 @@ This repository has been cleaned up to remove the old experimental scope and now
 - Chinese README: [`README.md`](README.md)
 - Build matrix: [`docs/BUILD_MATRIX.en.md`](docs/BUILD_MATRIX.en.md)
 - Deployment guide: [`docs/DEPLOYMENT.en.md`](docs/DEPLOYMENT.en.md)
-- First release notes draft: [`docs/releases/v0.1.0.md`](docs/releases/v0.1.0.md)
+- Latest release notes draft: [`docs/releases/v0.1.1.md`](docs/releases/v0.1.1.md)
 
 ## Core capabilities
 
@@ -142,6 +142,8 @@ The repository includes two GitHub Actions workflows:
 - [`docs/BUILD_MATRIX.en.md`](docs/BUILD_MATRIX.en.md)
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 - [`docs/DEPLOYMENT.en.md`](docs/DEPLOYMENT.en.md)
+- [`docs/releases/v0.1.1.zh-CN.md`](docs/releases/v0.1.1.zh-CN.md)
+- [`docs/releases/v0.1.1.md`](docs/releases/v0.1.1.md)
 - [`docs/releases/v0.1.0.zh-CN.md`](docs/releases/v0.1.0.zh-CN.md)
 - [`docs/releases/v0.1.0.md`](docs/releases/v0.1.0.md)
 

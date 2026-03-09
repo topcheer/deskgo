@@ -85,6 +85,7 @@ type DesktopCapture struct {
 	h264Initialized bool // H.264 编码器是否已初始化
 	forceKeyFrame   bool // 强制发送关键帧
 	pendingKeyFrame bool // 编码器初始化完成后是否需要强制关键帧
+	pendingStart    bool // 捕获循环停止后是否需要立即重启
 
 	// 鼠标状态追踪
 	mouseLeftDown   bool
@@ -286,21 +287,49 @@ func (c *DesktopCapture) captureLoop() {
 	log.Printf("🔄 捕获循环已启动")
 	c.mu.Lock()
 	c.running = true
+	c.pendingStart = false
 	c.mu.Unlock()
 
 	ticker := time.NewTicker(c.frameRate)
 	defer ticker.Stop()
 
 	defer func() {
+		c.mu.Lock()
+		c.captureStarted = false
+		c.running = false
+		c.pendingStart = false
+		c.mu.Unlock()
+
 		if r := recover(); r != nil {
 			log.Printf("💥 捕获循环 panic: %v", r)
 		}
 	}()
 
-	for c.running {
+	for {
 		<-ticker.C
 
+		c.mu.Lock()
+		running := c.running
+		pendingStart := c.pendingStart
+		if !running && pendingStart {
+			log.Printf("♻️  捕获循环恢复串流")
+			c.running = true
+			c.pendingStart = false
+			running = true
+		}
+		c.mu.Unlock()
+		if !running {
+			return
+		}
+
 		if err := c.captureAndSend(); err != nil {
+			c.mu.Lock()
+			running = c.running
+			pendingStart = c.pendingStart
+			c.mu.Unlock()
+			if !running && !pendingStart {
+				return
+			}
 			log.Printf("❌ 捕获失败: %v", err)
 			continue
 		}
@@ -545,10 +574,25 @@ func (c *DesktopCapture) handleControlEvent(event *ControlEvent) {
 			log.Printf("🚀 收到start_capture消息，启动捕获循环")
 			c.captureStarted = true
 			c.running = true
+			c.pendingStart = false
 			go c.captureLoop()
-		} else {
+		} else if c.running {
 			log.Printf("ℹ️  捕获循环已经在运行，忽略重复的start_capture消息")
+		} else {
+			log.Printf("♻️  捕获循环正在停止，已标记为重新启动")
+			c.pendingStart = true
 		}
+		c.mu.Unlock()
+
+	case "stop_capture":
+		c.mu.Lock()
+		if c.running || c.pendingStart {
+			log.Printf("⏸️  收到stop_capture消息，暂停串流")
+		} else {
+			log.Printf("ℹ️  当前没有活动串流，忽略stop_capture消息")
+		}
+		c.running = false
+		c.pendingStart = false
 		c.mu.Unlock()
 
 	case "input":
