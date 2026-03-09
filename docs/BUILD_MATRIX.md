@@ -19,6 +19,7 @@
 - `bin/relay-server`：当前主机可直接运行的 Relay
 - `bin/deskgo-desktop` 或 `bin/deskgo-desktop-h264`：当前主机可直接运行的桌面 CLI
 - `downloads/`：多架构发布包
+- `downloads/deskgo-autostart.sh` / `downloads/deskgo-autostart.ps1`：自动运行安装脚本
 - `downloads/SHA256SUMS.txt`：发布包校验文件
 
 ## Desktop CLI 发布矩阵
@@ -71,7 +72,7 @@ GitHub Actions 当前会构建以下镜像平台：
 
 ## GitHub Actions
 
-- `.github/workflows/release-artifacts.yml`：构建多架构 Desktop CLI 与 Relay 产物，并汇总 `SHA256SUMS.txt`
+- `.github/workflows/release-artifacts.yml`：构建多架构 Desktop CLI 与 Relay 产物，附带自动运行安装脚本，并汇总 `SHA256SUMS.txt`
 - `.github/workflows/docker-image.yml`：构建并发布多架构 GHCR 镜像
 
 ## Docker 打包说明

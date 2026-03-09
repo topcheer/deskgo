@@ -4,8 +4,9 @@ package main
 配置文件支持
 
 配置文件查找优先级：
-1. ./deskgo.json (当前目录)
-2. ~/.deskgo.json (用户主目录)
+1. -config 指定的路径
+2. ./deskgo.json (当前目录)
+3. ~/.deskgo.json (用户主目录)
 
 如果都不存在，创建 ~/.deskgo.json 并设置默认值
 */
@@ -86,9 +87,17 @@ func normalizeConfig(config Config) Config {
 }
 
 // LoadConfig 加载配置文件
-// 查找优先级：./deskgo.json -> ~/.deskgo.json
-// 如果都不存在，创建 ~/.deskgo.json 并返回默认配置
-func LoadConfig() (Config, string, error) {
+// 查找优先级：-config 指定路径 -> ./deskgo.json -> ~/.deskgo.json
+// 如果目标配置不存在，则在对应路径写入默认配置并返回
+func LoadConfig(explicitPath string) (Config, string, error) {
+	if explicitPath != "" {
+		config, err := loadOrCreateConfigFile(explicitPath)
+		if err != nil {
+			return Config{}, "", fmt.Errorf("读取 %s 失败: %w", explicitPath, err)
+		}
+		return config, explicitPath, nil
+	}
+
 	// 1. 尝试当前目录的配置文件
 	localConfigPath := "deskgo.json"
 	if config, err := loadConfigFile(localConfigPath); err == nil {
@@ -111,12 +120,27 @@ func LoadConfig() (Config, string, error) {
 	}
 
 	// 3. 配置文件不存在，创建默认配置
-	defaultConfig := DefaultConfig()
-	if err := saveConfigFile(homeConfigPath, defaultConfig); err != nil {
+	config, err := loadOrCreateConfigFile(homeConfigPath)
+	if err != nil {
 		return Config{}, "", fmt.Errorf("创建默认配置文件失败: %w", err)
 	}
 
-	return defaultConfig, homeConfigPath, nil
+	return config, homeConfigPath, nil
+}
+
+func loadOrCreateConfigFile(path string) (Config, error) {
+	if config, err := loadConfigFile(path); err == nil {
+		return config, nil
+	} else if !os.IsNotExist(err) {
+		return Config{}, err
+	}
+
+	defaultConfig := DefaultConfig()
+	if err := saveConfigFile(path, defaultConfig); err != nil {
+		return Config{}, err
+	}
+
+	return defaultConfig, nil
 }
 
 // loadConfigFile 从指定路径加载配置文件
@@ -139,6 +163,10 @@ func saveConfigFile(path string, config Config) error {
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return fmt.Errorf("序列化配置失败: %w", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("创建配置目录失败: %w", err)
 	}
 
 	if err := os.WriteFile(path, data, 0644); err != nil {

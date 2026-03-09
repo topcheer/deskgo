@@ -6,6 +6,7 @@ This repository has been cleaned up to remove the old experimental scope and now
 - Upstream repository: <https://github.com/topcheer/deskgo>
 - Live demo: <https://deskgo.zty8.cn>
 - Chinese README: [`README.md`](README.md)
+- Autostart guide: [`docs/AUTORUN.en.md`](docs/AUTORUN.en.md)
 - Build matrix: [`docs/BUILD_MATRIX.en.md`](docs/BUILD_MATRIX.en.md)
 - Deployment guide: [`docs/DEPLOYMENT.en.md`](docs/DEPLOYMENT.en.md)
 - Latest release notes draft: [`docs/releases/v0.1.1.md`](docs/releases/v0.1.1.md)
@@ -46,6 +47,7 @@ This produces:
 
 - Host binaries: `bin/relay-server` and `bin/deskgo-desktop*`
 - Cross-architecture release packages in `downloads/`
+- Autostart installer scripts: `downloads/deskgo-autostart.sh` and `downloads/deskgo-autostart.ps1`
 - A checksum manifest at `downloads/SHA256SUMS.txt`
 
 ### 2. Start the relay
@@ -86,6 +88,37 @@ You can also rely on environment variables:
 ```bash
 HTTPS_PROXY=http://proxy.internal:8080 ./bin/deskgo-desktop -server wss://deskgo.zty8.cn/api/desktop -session demo
 ```
+
+### 4. Install autostart
+
+Online install (the script comes from GitHub, while the CLI defaults to the latest release asset):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.sh -o /tmp/deskgo-autostart.sh
+bash /tmp/deskgo-autostart.sh install
+```
+
+```powershell
+$script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
+Invoke-WebRequest 'https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1' -OutFile $script
+powershell -ExecutionPolicy Bypass -File $script install
+```
+
+macOS / Linux:
+
+```bash
+./scripts/deskgo-autostart.sh install
+```
+
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 install
+```
+
+The online installer can be fetched immediately, but successful installation still depends on the latest release containing the matching `deskgo-desktop-<os>-<arch>` asset and `SHA256SUMS.txt`. For repeatable rollouts, pin `--version`.
+
+More guided and unattended examples are documented in [`docs/AUTORUN.en.md`](docs/AUTORUN.en.md).
 
 ## Docker and cloud deployment
 
@@ -138,6 +171,8 @@ The repository includes two GitHub Actions workflows:
 ## Documentation index
 
 - [`README.md`](README.md)
+- [`docs/AUTORUN.md`](docs/AUTORUN.md)
+- [`docs/AUTORUN.en.md`](docs/AUTORUN.en.md)
 - [`docs/BUILD_MATRIX.md`](docs/BUILD_MATRIX.md)
 - [`docs/BUILD_MATRIX.en.md`](docs/BUILD_MATRIX.en.md)
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)

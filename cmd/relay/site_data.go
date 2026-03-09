@@ -30,12 +30,21 @@ type downloadGroup struct {
 }
 
 type siteDownloads struct {
-	DesktopDownloads     []downloadGroup
-	RelayDownloads       []downloadGroup
-	DesktopArtifactCount int
-	RelayArtifactCount   int
-	HasChecksums         bool
-	ChecksumURL          string
+	DesktopDownloads       []downloadGroup
+	RelayDownloads         []downloadGroup
+	DesktopArtifactCount   int
+	RelayArtifactCount     int
+	HasChecksums           bool
+	ChecksumURL            string
+	RepositoryURL          string
+	ReadmeZHURL            string
+	ReadmeENURL            string
+	BuildMatrixZHURL       string
+	BuildMatrixENURL       string
+	AutostartGuideZHURL    string
+	AutostartGuideENURL    string
+	AutostartShellURL      string
+	AutostartPowerShellURL string
 }
 
 type desktopPageStrings struct {
@@ -110,8 +119,20 @@ var (
 const githubReleaseCacheTTL = 5 * time.Minute
 
 func collectSiteDownloads(downloadsDir string) siteDownloads {
+	repository := releaseRepository()
+	branch := repositoryBranch()
+
 	data := siteDownloads{
-		ChecksumURL: "/downloads/SHA256SUMS.txt",
+		ChecksumURL:            "/downloads/SHA256SUMS.txt",
+		RepositoryURL:          "https://github.com/" + repository,
+		ReadmeZHURL:            fmt.Sprintf("https://github.com/%s/blob/%s/README.md", repository, branch),
+		ReadmeENURL:            fmt.Sprintf("https://github.com/%s/blob/%s/README.en.md", repository, branch),
+		BuildMatrixZHURL:       fmt.Sprintf("https://github.com/%s/blob/%s/docs/BUILD_MATRIX.md", repository, branch),
+		BuildMatrixENURL:       fmt.Sprintf("https://github.com/%s/blob/%s/docs/BUILD_MATRIX.en.md", repository, branch),
+		AutostartGuideZHURL:    fmt.Sprintf("https://github.com/%s/blob/%s/docs/AUTORUN.md", repository, branch),
+		AutostartGuideENURL:    fmt.Sprintf("https://github.com/%s/blob/%s/docs/AUTORUN.en.md", repository, branch),
+		AutostartShellURL:      fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/scripts/deskgo-autostart.sh", repository, branch),
+		AutostartPowerShellURL: fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/scripts/deskgo-autostart.ps1", repository, branch),
 	}
 
 	entries, err := os.ReadDir(downloadsDir)
@@ -130,6 +151,14 @@ func collectSiteDownloads(downloadsDir string) siteDownloads {
 		name := entry.Name()
 		if name == "SHA256SUMS.txt" {
 			data.HasChecksums = true
+			continue
+		}
+		if name == "deskgo-autostart.sh" {
+			data.AutostartShellURL = "/downloads/" + name
+			continue
+		}
+		if name == "deskgo-autostart.ps1" {
+			data.AutostartPowerShellURL = "/downloads/" + name
 			continue
 		}
 
@@ -227,10 +256,7 @@ func needsGitHubReleaseFallback(groups map[string]*downloadGroup, data siteDownl
 }
 
 func collectGitHubReleaseArtifacts() ([]remoteDownloadArtifact, string, error) {
-	repository := strings.TrimSpace(os.Getenv("DESKGO_RELEASE_REPOSITORY"))
-	if repository == "" {
-		repository = "topcheer/deskgo"
-	}
+	repository := releaseRepository()
 
 	tag := strings.TrimSpace(os.Getenv("DESKGO_RELEASE_TAG"))
 	cacheKey := repository + "@" + tag
@@ -293,6 +319,22 @@ func collectGitHubReleaseArtifacts() ([]remoteDownloadArtifact, string, error) {
 	githubReleaseCache.mu.Unlock()
 
 	return artifacts, checksumURL, nil
+}
+
+func releaseRepository() string {
+	repository := strings.TrimSpace(os.Getenv("DESKGO_RELEASE_REPOSITORY"))
+	if repository == "" {
+		repository = "topcheer/deskgo"
+	}
+	return repository
+}
+
+func repositoryBranch() string {
+	branch := strings.TrimSpace(os.Getenv("DESKGO_REPOSITORY_BRANCH"))
+	if branch == "" {
+		branch = "master"
+	}
+	return branch
 }
 
 func parseDownloadName(name string) (parsedDownload, bool) {

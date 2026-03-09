@@ -101,13 +101,8 @@ type DesktopCapture struct {
 }
 
 func main() {
-	// 加载配置文件
-	config, configPath, err := LoadConfig()
-	if err != nil {
-		log.Fatalf("❌ 加载配置文件失败: %v", err)
-	}
-
 	// 命令行参数（优先级高于配置文件）
+	configFile := flag.String("config", "", "配置文件路径（留空按默认优先级查找）")
 	serverURL := flag.String("server", "", "Relay WebSocket URL")
 	proxyURL := flag.String("proxy", "", "Relay proxy URL (http://, https://, or socks5://)")
 	display := flag.Int("display", 0, "显示器索引 (0=主显示器，使用配置文件默认值)")
@@ -117,6 +112,12 @@ func main() {
 	codec := flag.String("codec", "", "编码格式 (jpeg/h264, 留空使用配置文件默认值)")
 	h264Bitrate := flag.Int("h264-bitrate", 0, "H.264 比特率 (Kbps, 0=使用配置文件默认值)")
 	flag.Parse()
+
+	// 加载配置文件
+	config, configPath, err := LoadConfig(*configFile)
+	if err != nil {
+		log.Fatalf("❌ 加载配置文件失败: %v", err)
+	}
 
 	// 合并配置文件和命令行参数
 	config = MergeWithFlags(config, serverURL, proxyURL, display, fps, quality, sessionID, codec, h264Bitrate)

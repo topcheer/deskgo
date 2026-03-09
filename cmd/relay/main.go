@@ -43,26 +43,44 @@ func main() {
 	router.GET("/", func(c *gin.Context) {
 		downloads := collectSiteDownloads(downloadsDir)
 		c.HTML(http.StatusOK, "index.html", gin.H{
-			"DesktopDownloads":     downloads.DesktopDownloads,
-			"RelayDownloads":       downloads.RelayDownloads,
-			"DesktopArtifactCount": downloads.DesktopArtifactCount,
-			"RelayArtifactCount":   downloads.RelayArtifactCount,
-			"HasChecksums":         downloads.HasChecksums,
-			"ChecksumURL":          downloads.ChecksumURL,
-			"SessionBasePath":      "/session",
+			"DesktopDownloads":       downloads.DesktopDownloads,
+			"RelayDownloads":         downloads.RelayDownloads,
+			"DesktopArtifactCount":   downloads.DesktopArtifactCount,
+			"RelayArtifactCount":     downloads.RelayArtifactCount,
+			"HasChecksums":           downloads.HasChecksums,
+			"ChecksumURL":            downloads.ChecksumURL,
+			"RepositoryURL":          downloads.RepositoryURL,
+			"ReadmeZHURL":            downloads.ReadmeZHURL,
+			"ReadmeENURL":            downloads.ReadmeENURL,
+			"BuildMatrixZHURL":       downloads.BuildMatrixZHURL,
+			"BuildMatrixENURL":       downloads.BuildMatrixENURL,
+			"AutostartGuideZHURL":    downloads.AutostartGuideZHURL,
+			"AutostartGuideENURL":    downloads.AutostartGuideENURL,
+			"AutostartShellURL":      downloads.AutostartShellURL,
+			"AutostartPowerShellURL": downloads.AutostartPowerShellURL,
+			"SessionBasePath":        "/session",
 		})
 	})
 
 	router.GET("/en", func(c *gin.Context) {
 		downloads := collectSiteDownloads(downloadsDir)
 		c.HTML(http.StatusOK, "index_en.html", gin.H{
-			"DesktopDownloads":     downloads.DesktopDownloads,
-			"RelayDownloads":       downloads.RelayDownloads,
-			"DesktopArtifactCount": downloads.DesktopArtifactCount,
-			"RelayArtifactCount":   downloads.RelayArtifactCount,
-			"HasChecksums":         downloads.HasChecksums,
-			"ChecksumURL":          downloads.ChecksumURL,
-			"SessionBasePath":      "/en/session",
+			"DesktopDownloads":       downloads.DesktopDownloads,
+			"RelayDownloads":         downloads.RelayDownloads,
+			"DesktopArtifactCount":   downloads.DesktopArtifactCount,
+			"RelayArtifactCount":     downloads.RelayArtifactCount,
+			"HasChecksums":           downloads.HasChecksums,
+			"ChecksumURL":            downloads.ChecksumURL,
+			"RepositoryURL":          downloads.RepositoryURL,
+			"ReadmeZHURL":            downloads.ReadmeZHURL,
+			"ReadmeENURL":            downloads.ReadmeENURL,
+			"BuildMatrixZHURL":       downloads.BuildMatrixZHURL,
+			"BuildMatrixENURL":       downloads.BuildMatrixENURL,
+			"AutostartGuideZHURL":    downloads.AutostartGuideZHURL,
+			"AutostartGuideENURL":    downloads.AutostartGuideENURL,
+			"AutostartShellURL":      downloads.AutostartShellURL,
+			"AutostartPowerShellURL": downloads.AutostartPowerShellURL,
+			"SessionBasePath":        "/en/session",
 		})
 	})
 

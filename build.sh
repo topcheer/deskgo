@@ -89,6 +89,12 @@ build_desktop_target() {
   build_go_binary "$output" ./cmd/client "$goos" "$goarch" "$goarm" "$cgo" desktop
 }
 
+copy_support_scripts() {
+  echo "📄 复制自动运行安装脚本..."
+  cp scripts/deskgo-autostart.sh downloads/deskgo-autostart.sh
+  cp scripts/deskgo-autostart.ps1 downloads/deskgo-autostart.ps1
+}
+
 write_checksums() {
   local checksum_file="downloads/SHA256SUMS.txt"
   local -a files=()
@@ -179,6 +185,7 @@ else
   echo "ℹ️  当前主机不是 macOS，已跳过 macOS Desktop CLI 下载包；如需生成，请在 macOS 上运行 ./build.sh。"
 fi
 
+copy_support_scripts
 write_checksums
 
 echo "✅ 构建完成！"
@@ -196,6 +203,8 @@ fi
 echo ""
 echo "下载包输出目录："
 echo "  ./downloads"
+echo "  ./downloads/deskgo-autostart.sh"
+echo "  ./downloads/deskgo-autostart.ps1"
 echo ""
 echo "校验文件："
 echo "  ./downloads/SHA256SUMS.txt"

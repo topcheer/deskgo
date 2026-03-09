@@ -16,6 +16,8 @@ vendor/
 
 # Build output
 deskgo-*
+!scripts/deskgo-autostart.sh
+!scripts/deskgo-autostart.ps1
 relay-server
 downloads/
 

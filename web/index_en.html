@@ -618,6 +618,48 @@
             max-width: 72ch;
         }
 
+        .inline-links {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .download-card ul,
+        .feature-card ul {
+            margin: 16px 0 0;
+            padding-left: 18px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .download-card li + li,
+        .feature-card li + li {
+            margin-top: 8px;
+        }
+
+        .command-snippet {
+            margin: 20px 0 0;
+            padding: 16px 18px;
+            border-radius: 22px;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-size: 0.84rem;
+            line-height: 1.7;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .command-snippet code {
+            font-family: "SFMono-Regular", SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .mini-note {
+            margin-top: 16px !important;
+            font-size: 0.94rem;
+        }
+
         .download-actions {
             margin-top: 20px;
             display: flex;
@@ -781,9 +823,10 @@
             <nav class="nav" aria-label="Primary navigation">
                 <a href="#session">Connect</a>
                 <a href="#downloads">Downloads</a>
+                <a href="#autostart">Autostart</a>
                 <a href="#features">Capabilities</a>
                 <a href="#steps">Workflow</a>
-                <a href="https://github.com/topcheer/deskgo/blob/main/README.en.md" class="ghost-button">Docs</a>
+                <a href="{{ .ReadmeENURL }}" class="ghost-button">Docs</a>
                 <a href="/" class="ghost-button" lang="zh-CN">Chinese</a>
             </nav>
         </header>
@@ -794,12 +837,12 @@
                     <span class="eyebrow">Desktop CLI / Relay / Bilingual Web</span>
                     <h1>One build pipeline, broader coverage for desktop clients and relay deployments.</h1>
                     <p>
-                        DeskGo Relay now ships multi-architecture desktop CLIs for the three primary desktop operating systems, a broader relay server matrix, and bilingual web entry points.
+                        DeskGo Relay now ships multi-architecture desktop CLIs for the three primary desktop operating systems, a broader relay server matrix, bilingual web entry points, and online autostart installers you can execute directly.
                         The download area automatically reflects the artifacts that are actually present in the current release directory, with SHA256 checksums alongside them.
                     </p>
                     <div class="hero-actions">
                         <a href="#session" class="primary-button">Open session</a>
-                        <a href="#downloads" class="ghost-button">View CLI / Relay builds</a>
+                        <a href="#autostart" class="ghost-button">Install autostart</a>
                     </div>
                     <div class="stats" aria-label="Key metrics">
                         <div class="stat-card">
@@ -934,7 +977,7 @@
                             <h3>Relay server releases</h3>
                             <p>Relay binaries now cover a broader server matrix for local deployments, edge nodes, ARM hosts, and mixed Linux fleets.</p>
                         </div>
-                        <a class="ghost-button" href="https://github.com/topcheer/deskgo/blob/main/docs/BUILD_MATRIX.en.md">Build matrix guide</a>
+                        <a class="ghost-button" href="{{ .BuildMatrixENURL }}">Build matrix guide</a>
                     </div>
                     {{ if .RelayDownloads }}
                     <div class="downloads">
@@ -965,6 +1008,77 @@
                     {{ else }}
                     <div class="download-empty">There are no relay server artifacts in the current downloads directory yet. Run <code>./build.sh</code> first.</div>
                     {{ end }}
+                </div>
+            </section>
+
+            <section class="section" id="autostart">
+                <div class="section-heading">
+                    <div>
+                        <h2>Install autostart online in one step.</h2>
+                        <p>The shell and PowerShell installers support both guided prompts and unattended flags. They detect the current OS/architecture, download the matching CLI, verify SHA256, write a fixed session config, and register per-user autostart.</p>
+                    </div>
+                </div>
+                <div class="downloads">
+                    <article class="download-card">
+                        <div class="icon-wrap" aria-hidden="true">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M7 4h10v16H7V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                <path d="M10 8h8M10 12h8M10 16h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <h3>macOS / Linux installer</h3>
+                        <p>Targets the current logged-in user session: LaunchAgent on macOS, XDG Autostart by default on Linux, with optional <code>systemd --user</code>.</p>
+                        <ul>
+                            <li>Supports guided install/uninstall and <code>--non-interactive</code> flag-based execution</li>
+                            <li>Lets you choose relay URL, fixed session name, codec, and release version</li>
+                            <li>The installer itself can be fetched online; the CLI binary comes from the GitHub latest release by default</li>
+                        </ul>
+                        <div class="inline-links">
+                            <a class="primary-button" href="{{ .AutostartShellURL }}">Download shell script</a>
+                            <a class="ghost-button" href="{{ .AutostartGuideENURL }}">Full guide</a>
+                        </div>
+                        <pre class="command-snippet"><code>curl -fsSL {{ .AutostartShellURL }} -o /tmp/deskgo-autostart.sh
+bash /tmp/deskgo-autostart.sh install</code></pre>
+                    </article>
+                    <article class="download-card">
+                        <div class="icon-wrap" aria-hidden="true">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 3v18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                <path d="M6 9l6-6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <h3>Windows installer</h3>
+                        <p>Registers a per-user Scheduled Task at logon, which covers the usual desktop autostart flow without requiring administrator privileges.</p>
+                        <ul>
+                            <li>Supports guided or unattended install, plus clean uninstall</li>
+                            <li>Downloads the matching Windows CLI asset and verifies <code>SHA256SUMS.txt</code></li>
+                            <li>The recommended codec for Windows autostart is currently <code>jpeg</code></li>
+                        </ul>
+                        <div class="inline-links">
+                            <a class="primary-button" href="{{ .AutostartPowerShellURL }}">Download PowerShell script</a>
+                            <a class="ghost-button" href="{{ .AutostartGuideENURL }}">Full guide</a>
+                        </div>
+                        <pre class="command-snippet"><code>$script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
+Invoke-WebRequest '{{ .AutostartPowerShellURL }}' -OutFile $script
+powershell -ExecutionPolicy Bypass -File $script install</code></pre>
+                    </article>
+                    <article class="download-card">
+                        <div class="icon-wrap" aria-hidden="true">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 4l8 4v4c0 4.4-3.2 8.5-8 9-4.8-.5-8-4.6-8-9V8l8-4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                <path d="M9.5 12.5l1.8 1.8 3.7-4.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <h3>Before you roll it out</h3>
+                        <p>Once this branch is on GitHub, users can fetch the installer scripts online from this page, but successful installation still depends on the release assets matching the script contract.</p>
+                        <ul>
+                            <li>The latest release must contain the matching <code>deskgo-desktop-&lt;os&gt;-&lt;arch&gt;</code> asset and <code>SHA256SUMS.txt</code></li>
+                            <li>Autostart is intentionally scoped to the current logged-in desktop session, not a headless system service</li>
+                            <li>The installer writes configuration to <code>deskgo.json</code> in the install root, so it also works with older release CLIs that do not understand <code>-config</code></li>
+                        </ul>
+                        <p class="mini-note">For predictable fleet rollouts, pin <code>--version</code> and review the <a href="{{ .BuildMatrixENURL }}">build matrix</a>, <a href="{{ .AutostartGuideENURL }}">autostart guide</a>, and <a href="{{ .RepositoryURL }}">GitHub repository</a>.</p>
+                    </article>
                 </div>
             </section>
 
@@ -1054,16 +1168,17 @@
         <footer class="footer-grid">
             <section class="footer-card">
                 <h3>Built for release distribution</h3>
-                <p>The relay is more than a session forwarder now: it also acts as the unified entry point for multi-architecture downloads, bilingual pages, and the browser viewing experience.</p>
+                <p>The relay is more than a session forwarder now: it also acts as the unified entry point for multi-architecture downloads, bilingual pages, online autostart guidance, and the browser viewing experience.</p>
                 <div class="footer-links">
                     <a href="#downloads">Download matrix</a>
-                    <a href="https://github.com/topcheer/deskgo/blob/main/README.md">README ZH</a>
-                    <a href="https://github.com/topcheer/deskgo/blob/main/README.en.md">README EN</a>
+                    <a href="#autostart">Autostart</a>
+                    <a href="{{ .ReadmeZHURL }}">README ZH</a>
+                    <a href="{{ .ReadmeENURL }}">README EN</a>
                 </div>
             </section>
             <section class="footer-card">
                 <h3>Deployment note</h3>
-                <p>If you package the relay with Docker, the downloads directory inside the image is served directly by the site. Run <code>./build.sh</code> once on a macOS host first if you also want macOS desktop artifacts bundled into that image.</p>
+                <p>The online installers can be fetched immediately from this site or GitHub, but successful installation still depends on the latest release containing the matching CLI asset and <code>SHA256SUMS.txt</code>. For repeatable rollouts, pin <code>--version</code>.</p>
                 <p class="fineprint">DeskGo Relay · Multi-architecture delivery point · H.264 / JPEG auto negotiation · Bilingual web entry</p>
             </section>
         </footer>

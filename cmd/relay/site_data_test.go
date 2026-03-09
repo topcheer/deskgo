@@ -15,6 +15,7 @@ func TestCollectSiteDownloadsUsesGitHubReleaseFallbackForMissingDesktopGroup(t *
 		"deskgo-desktop-linux-amd64",
 		"deskgo-desktop-windows-amd64.exe",
 		"deskgo-relay-linux-amd64",
+		"deskgo-autostart.sh",
 	} {
 		if err := os.WriteFile(filepath.Join(tempDir, name), []byte("artifact"), 0o644); err != nil {
 			t.Fatalf("write temp artifact %s: %v", name, err)
@@ -52,6 +53,7 @@ func TestCollectSiteDownloadsUsesGitHubReleaseFallbackForMissingDesktopGroup(t *
 
 	t.Setenv("DESKGO_RELEASE_REPOSITORY", "topcheer/deskgo")
 	t.Setenv("DESKGO_RELEASE_TAG", "v0.1.0")
+	t.Setenv("DESKGO_REPOSITORY_BRANCH", "master")
 
 	data := collectSiteDownloads(tempDir)
 
@@ -60,6 +62,15 @@ func TestCollectSiteDownloadsUsesGitHubReleaseFallbackForMissingDesktopGroup(t *
 	}
 	if data.ChecksumURL != "https://example.com/SHA256SUMS.txt" {
 		t.Fatalf("unexpected checksum URL: %s", data.ChecksumURL)
+	}
+	if data.AutostartShellURL != "/downloads/deskgo-autostart.sh" {
+		t.Fatalf("expected local shell installer URL, got %s", data.AutostartShellURL)
+	}
+	if data.AutostartPowerShellURL != "https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1" {
+		t.Fatalf("expected raw PowerShell fallback URL, got %s", data.AutostartPowerShellURL)
+	}
+	if data.ReadmeZHURL != "https://github.com/topcheer/deskgo/blob/master/README.md" {
+		t.Fatalf("unexpected README URL: %s", data.ReadmeZHURL)
 	}
 
 	if len(data.DesktopDownloads) != 3 {

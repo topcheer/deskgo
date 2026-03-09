@@ -6,6 +6,7 @@ DeskGo 是一个以 Go 编写的远程桌面串流方案，包含 Desktop CLI、
 - 上游仓库：<https://github.com/topcheer/deskgo>
 - 在线 Demo：<https://deskgo.zty8.cn>
 - 英文文档：[`README.en.md`](README.en.md)
+- 自动运行说明：[`docs/AUTORUN.md`](docs/AUTORUN.md)
 - 构建矩阵：[`docs/BUILD_MATRIX.md`](docs/BUILD_MATRIX.md)
 - 部署指南：[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 - 最新 Release Note 草案：[`docs/releases/v0.1.1.zh-CN.md`](docs/releases/v0.1.1.zh-CN.md)
@@ -46,6 +47,7 @@ cd deskgo
 
 - 当前平台运行文件：`bin/relay-server`、`bin/deskgo-desktop*`
 - 多架构下载包：`downloads/`
+- 自动运行安装脚本：`downloads/deskgo-autostart.sh`、`downloads/deskgo-autostart.ps1`
 - 校验文件：`downloads/SHA256SUMS.txt`
 
 ### 2. 启动 Relay
@@ -86,6 +88,37 @@ Linux / Windows：
 ```bash
 HTTPS_PROXY=http://proxy.internal:8080 ./bin/deskgo-desktop -server wss://deskgo.zty8.cn/api/desktop -session demo
 ```
+
+### 4. 安装自动运行
+
+在线安装（脚本来自 GitHub，CLI 默认从 latest release 下载）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.sh -o /tmp/deskgo-autostart.sh
+bash /tmp/deskgo-autostart.sh install
+```
+
+```powershell
+$script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
+Invoke-WebRequest 'https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1' -OutFile $script
+powershell -ExecutionPolicy Bypass -File $script install
+```
+
+macOS / Linux：
+
+```bash
+./scripts/deskgo-autostart.sh install
+```
+
+Windows：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 install
+```
+
+在线脚本可直接获取，但成功安装仍依赖 latest release 中存在匹配平台的 `deskgo-desktop-<os>-<arch>` 资产和 `SHA256SUMS.txt`；如果你要做可重复部署，请显式传入 `--version` 固定版本。
+
+更多引导式与非引导式示例见 [`docs/AUTORUN.md`](docs/AUTORUN.md)。
 
 ## Docker 与云部署
 
@@ -138,6 +171,8 @@ docker compose -f docker-compose.prod.yml up -d
 ## 文档索引
 
 - [`README.en.md`](README.en.md)
+- [`docs/AUTORUN.md`](docs/AUTORUN.md)
+- [`docs/AUTORUN.en.md`](docs/AUTORUN.en.md)
 - [`docs/BUILD_MATRIX.md`](docs/BUILD_MATRIX.md)
 - [`docs/BUILD_MATRIX.en.md`](docs/BUILD_MATRIX.en.md)
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)

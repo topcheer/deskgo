@@ -618,6 +618,48 @@
             max-width: 72ch;
         }
 
+        .inline-links {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .download-card ul,
+        .feature-card ul {
+            margin: 16px 0 0;
+            padding-left: 18px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .download-card li + li,
+        .feature-card li + li {
+            margin-top: 8px;
+        }
+
+        .command-snippet {
+            margin: 20px 0 0;
+            padding: 16px 18px;
+            border-radius: 22px;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-size: 0.84rem;
+            line-height: 1.7;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .command-snippet code {
+            font-family: "SFMono-Regular", SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .mini-note {
+            margin-top: 16px !important;
+            font-size: 0.94rem;
+        }
+
         .download-actions {
             margin-top: 20px;
             display: flex;
@@ -781,9 +823,10 @@
             <nav class="nav" aria-label="主导航">
                 <a href="#session">连接会话</a>
                 <a href="#downloads">构建下载</a>
+                <a href="#autostart">自动运行</a>
                 <a href="#features">核心能力</a>
                 <a href="#steps">接入流程</a>
-                <a href="https://github.com/topcheer/deskgo/blob/main/README.md" class="ghost-button">查看文档</a>
+                <a href="{{ .ReadmeZHURL }}" class="ghost-button">查看文档</a>
                 <a href="/en" class="ghost-button" lang="en">English</a>
             </nav>
         </header>
@@ -795,12 +838,12 @@
                     <h1>一次构建，覆盖更多桌面终端与 Relay 部署架构。</h1>
                     <p>
                         DeskGo Relay 现在同时提供三大桌面操作系统的多架构 CLI、
-                        更丰富的 Relay 服务器二进制，以及中英双语网站入口。
+                        更丰富的 Relay 服务器二进制、中英双语网站入口，以及可直接在线执行的一键自动运行脚本。
                         下载区会根据当前产物目录自动列出可用构建，并附带 SHA256 校验文件。
                     </p>
                     <div class="hero-actions">
                         <a href="#session" class="primary-button">立即连接会话</a>
-                        <a href="#downloads" class="ghost-button">查看 CLI / Relay 构建</a>
+                        <a href="#autostart" class="ghost-button">一键安装自动运行</a>
                     </div>
                     <div class="stats" aria-label="关键指标">
                         <div class="stat-card">
@@ -935,7 +978,7 @@
                             <h3>Relay 服务器发布包</h3>
                             <p>Relay 二进制扩展到更多服务器架构，适合本地部署、边缘节点、ARM 主机以及异构 Linux 服务器集群。</p>
                         </div>
-                        <a class="ghost-button" href="https://github.com/topcheer/deskgo/blob/main/docs/BUILD_MATRIX.md">查看架构说明</a>
+                        <a class="ghost-button" href="{{ .BuildMatrixZHURL }}">查看架构说明</a>
                     </div>
                     {{ if .RelayDownloads }}
                     <div class="downloads">
@@ -966,6 +1009,77 @@
                     {{ else }}
                     <div class="download-empty">当前 downloads 目录中还没有 Relay 服务器构建，请先运行 <code>./build.sh</code>。</div>
                     {{ end }}
+                </div>
+            </section>
+
+            <section class="section" id="autostart">
+                <div class="section-heading">
+                    <div>
+                        <h2>在线一键安装自动运行。</h2>
+                        <p>Shell / PowerShell 脚本同时支持引导式安装与非引导参数模式，会按当前设备平台下载匹配 CLI、校验 SHA256、写入固定 session 配置，并按当前用户注册自动启动。</p>
+                    </div>
+                </div>
+                <div class="downloads">
+                    <article class="download-card">
+                        <div class="icon-wrap" aria-hidden="true">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M7 4h10v16H7V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                <path d="M10 8h8M10 12h8M10 16h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <h3>macOS / Linux 安装器</h3>
+                        <p>面向当前登录用户：macOS 使用 LaunchAgent，Linux 默认使用 XDG Autostart，并支持切换到 <code>systemd --user</code>。</p>
+                        <ul>
+                            <li>支持交互式安装 / 卸载，也支持 <code>--non-interactive</code> 直接传参</li>
+                            <li>支持自定义 Relay、固定 Session 名字、Codec 与版本</li>
+                            <li>脚本本身可在线获取，CLI 二进制默认来自 GitHub latest release</li>
+                        </ul>
+                        <div class="inline-links">
+                            <a class="primary-button" href="{{ .AutostartShellURL }}">下载 shell 脚本</a>
+                            <a class="ghost-button" href="{{ .AutostartGuideZHURL }}">查看完整说明</a>
+                        </div>
+                        <pre class="command-snippet"><code>curl -fsSL {{ .AutostartShellURL }} -o /tmp/deskgo-autostart.sh
+bash /tmp/deskgo-autostart.sh install</code></pre>
+                    </article>
+                    <article class="download-card">
+                        <div class="icon-wrap" aria-hidden="true">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 3v18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                <path d="M6 9l6-6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <h3>Windows 安装器</h3>
+                        <p>使用当前用户的 Scheduled Task 在登录后启动 CLI，无需管理员权限即可覆盖大多数桌面自启动场景。</p>
+                        <ul>
+                            <li>支持引导式或一次性传参安装，也支持卸载清理</li>
+                            <li>自动下载匹配架构的 Windows CLI，并验证 <code>SHA256SUMS.txt</code></li>
+                            <li>Windows 当前自动运行模式建议使用 <code>jpeg</code> codec</li>
+                        </ul>
+                        <div class="inline-links">
+                            <a class="primary-button" href="{{ .AutostartPowerShellURL }}">下载 PowerShell 脚本</a>
+                            <a class="ghost-button" href="{{ .AutostartGuideZHURL }}">查看完整说明</a>
+                        </div>
+                        <pre class="command-snippet"><code>$script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
+Invoke-WebRequest '{{ .AutostartPowerShellURL }}' -OutFile $script
+powershell -ExecutionPolicy Bypass -File $script install</code></pre>
+                    </article>
+                    <article class="download-card">
+                        <div class="icon-wrap" aria-hidden="true">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 4l8 4v4c0 4.4-3.2 8.5-8 9-4.8-.5-8-4.6-8-9V8l8-4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                <path d="M9.5 12.5l1.8 1.8 3.7-4.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <h3>使用前请确认</h3>
+                        <p>提交到 GitHub 后，用户就可以通过这个页面直接在线拉取脚本；但真正安装成功还取决于发布产物是否满足脚本约定。</p>
+                        <ul>
+                            <li>latest release 必须包含匹配平台的 <code>deskgo-desktop-&lt;os&gt;-&lt;arch&gt;</code> 资产与 <code>SHA256SUMS.txt</code></li>
+                            <li>自动运行针对“当前登录用户的桌面会话”，不适合无人登录的系统服务场景</li>
+                            <li>脚本默认把配置写到安装目录中的 <code>deskgo.json</code>，因此也兼容尚未支持 <code>-config</code> 的旧 release CLI</li>
+                        </ul>
+                        <p class="mini-note">如果你要做可预测的批量部署，请固定 <code>--version</code>，并参考 <a href="{{ .BuildMatrixZHURL }}">构建矩阵</a>、<a href="{{ .AutostartGuideZHURL }}">自动运行文档</a> 与 <a href="{{ .RepositoryURL }}">GitHub 仓库</a>。</p>
+                    </article>
                 </div>
             </section>
 
@@ -1055,16 +1169,17 @@
         <footer class="footer-grid">
             <section class="footer-card">
                 <h3>为发布与分发而设计</h3>
-                <p>Relay 不只是会话转发器，它还承担多架构下载入口、双语页面以及浏览器查看体验的统一交付。</p>
+                <p>Relay 不只是会话转发器，它还承担多架构下载入口、双语页面、一键自动运行脚本说明以及浏览器查看体验的统一交付。</p>
                 <div class="footer-links">
                     <a href="#downloads">下载矩阵</a>
-                    <a href="https://github.com/topcheer/deskgo/blob/main/README.md">README</a>
-                    <a href="https://github.com/topcheer/deskgo/blob/main/README.en.md">README EN</a>
+                    <a href="#autostart">自动运行</a>
+                    <a href="{{ .ReadmeZHURL }}">README</a>
+                    <a href="{{ .ReadmeENURL }}">README EN</a>
                 </div>
             </section>
             <section class="footer-card">
                 <h3>部署提示</h3>
-                <p>如果你通过 Docker 打包 Relay，镜像中的 downloads 目录会被直接用于站点下载；在 macOS 主机先运行一次 <code>./build.sh</code>，还能把 macOS CLI 一并带入镜像。</p>
+                <p>在线脚本可以立即从当前站点或 GitHub 拉取，但安装成功仍依赖 latest release 中存在匹配平台的 CLI 二进制和 <code>SHA256SUMS.txt</code>；如需可重复部署，请显式传入 <code>--version</code> 固定版本。</p>
                 <p class="fineprint">DeskGo Relay · 多架构发布入口 · H.264 / JPEG 自动协商 · 中英双语站点</p>
             </section>
         </footer>

@@ -187,6 +187,11 @@ jobs:
           pattern: '*-*'
           merge-multiple: true
           path: dist
+      - name: Include autostart installer scripts
+        shell: bash
+        run: |
+          cp scripts/deskgo-autostart.sh dist/deskgo-autostart.sh
+          cp scripts/deskgo-autostart.ps1 dist/deskgo-autostart.ps1
       - name: Generate SHA256 manifest
         shell: bash
         run: |

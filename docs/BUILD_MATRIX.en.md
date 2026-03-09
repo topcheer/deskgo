@@ -19,6 +19,7 @@ Output locations:
 - `bin/relay-server`: host-runnable relay binary
 - `bin/deskgo-desktop` or `bin/deskgo-desktop-h264`: host-runnable desktop CLI
 - `downloads/`: cross-architecture release artifacts
+- `downloads/deskgo-autostart.sh` / `downloads/deskgo-autostart.ps1`: autostart installer scripts
 - `downloads/SHA256SUMS.txt`: checksum manifest
 
 ## Desktop CLI release matrix
@@ -71,7 +72,7 @@ Image tag strategy:
 
 ## GitHub Actions
 
-- `.github/workflows/release-artifacts.yml`: builds the multi-architecture Desktop CLI and relay artifacts and assembles `SHA256SUMS.txt`
+- `.github/workflows/release-artifacts.yml`: builds the multi-architecture Desktop CLI and relay artifacts, includes the autostart installer scripts, and assembles `SHA256SUMS.txt`
 - `.github/workflows/docker-image.yml`: builds and publishes the multi-architecture GHCR image
 
 ## Docker packaging notes
