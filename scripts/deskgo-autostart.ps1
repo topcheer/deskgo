@@ -169,8 +169,12 @@ function Get-CurrentArchitecture {
     }
 }
 
+function Test-IsWindowsHost {
+    return [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+}
+
 function Get-InstallRoot {
-    if ($IsWindows) {
+    if (Test-IsWindowsHost) {
         if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
             return (Join-Path $env:LOCALAPPDATA 'DeskGo')
         }
