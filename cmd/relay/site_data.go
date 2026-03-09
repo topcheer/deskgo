@@ -1,9 +1,16 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 )
 
 type downloadArtifact struct {
@@ -72,6 +79,36 @@ type parsedDownload struct {
 	Arch string
 }
 
+type githubReleaseAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+}
+
+type githubReleaseResponse struct {
+	Assets []githubReleaseAsset `json:"assets"`
+}
+
+type remoteDownloadArtifact struct {
+	FileName string
+	URL      string
+}
+
+type githubReleaseAssetCache struct {
+	mu          sync.Mutex
+	key         string
+	fetchedAt   time.Time
+	artifacts   []remoteDownloadArtifact
+	checksumURL string
+}
+
+var (
+	githubReleaseAPIBaseURL = "https://api.github.com"
+	githubReleaseHTTPClient = &http.Client{Timeout: 5 * time.Second}
+	githubReleaseCache      githubReleaseAssetCache
+)
+
+const githubReleaseCacheTTL = 5 * time.Minute
+
 func collectSiteDownloads(downloadsDir string) siteDownloads {
 	data := siteDownloads{
 		ChecksumURL: "/downloads/SHA256SUMS.txt",
@@ -83,6 +120,7 @@ func collectSiteDownloads(downloadsDir string) siteDownloads {
 	}
 
 	groups := map[string]*downloadGroup{}
+	seen := map[string]struct{}{}
 
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -100,23 +138,27 @@ func collectSiteDownloads(downloadsDir string) siteDownloads {
 			continue
 		}
 
-		key := parsed.Kind + ":" + parsed.OS
-		group, exists := groups[key]
-		if !exists {
-			group = newDownloadGroup(parsed.Kind, parsed.OS)
-			groups[key] = group
-		}
+		addDownloadArtifact(&data, groups, seen, parsed, name, "/downloads/"+name)
+	}
 
-		group.Artifacts = append(group.Artifacts, downloadArtifact{
-			FileName: name,
-			URL:      "/downloads/" + name,
-			Arch:     archLabel(parsed.Arch),
-		})
-
-		if parsed.Kind == "desktop" {
-			data.DesktopArtifactCount++
+	if needsGitHubReleaseFallback(groups, data) {
+		remoteArtifacts, checksumURL, err := collectGitHubReleaseArtifacts()
+		if err != nil {
+			log.Printf("Unable to load GitHub release assets for site downloads: %v", err)
 		} else {
-			data.RelayArtifactCount++
+			if !data.HasChecksums && checksumURL != "" {
+				data.HasChecksums = true
+				data.ChecksumURL = checksumURL
+			}
+
+			for _, artifact := range remoteArtifacts {
+				parsed, ok := parseDownloadName(artifact.FileName)
+				if !ok {
+					continue
+				}
+
+				addDownloadArtifact(&data, groups, seen, parsed, artifact.FileName, artifact.URL)
+			}
 		}
 	}
 
@@ -140,6 +182,117 @@ func collectSiteDownloads(downloadsDir string) siteDownloads {
 	})
 
 	return data
+}
+
+func addDownloadArtifact(data *siteDownloads, groups map[string]*downloadGroup, seen map[string]struct{}, parsed parsedDownload, fileName, assetURL string) {
+	if _, exists := seen[fileName]; exists {
+		return
+	}
+	seen[fileName] = struct{}{}
+
+	key := parsed.Kind + ":" + parsed.OS
+	group, exists := groups[key]
+	if !exists {
+		group = newDownloadGroup(parsed.Kind, parsed.OS)
+		groups[key] = group
+	}
+
+	group.Artifacts = append(group.Artifacts, downloadArtifact{
+		FileName: fileName,
+		URL:      assetURL,
+		Arch:     archLabel(parsed.Arch),
+	})
+
+	if parsed.Kind == "desktop" {
+		data.DesktopArtifactCount++
+	} else {
+		data.RelayArtifactCount++
+	}
+}
+
+func needsGitHubReleaseFallback(groups map[string]*downloadGroup, data siteDownloads) bool {
+	expectedDesktopGroups := []string{
+		"desktop:darwin",
+		"desktop:windows",
+		"desktop:linux",
+	}
+
+	for _, key := range expectedDesktopGroups {
+		if _, exists := groups[key]; !exists {
+			return true
+		}
+	}
+
+	return !data.HasChecksums
+}
+
+func collectGitHubReleaseArtifacts() ([]remoteDownloadArtifact, string, error) {
+	repository := strings.TrimSpace(os.Getenv("DESKGO_RELEASE_REPOSITORY"))
+	if repository == "" {
+		repository = "topcheer/deskgo"
+	}
+
+	tag := strings.TrimSpace(os.Getenv("DESKGO_RELEASE_TAG"))
+	cacheKey := repository + "@" + tag
+
+	githubReleaseCache.mu.Lock()
+	if githubReleaseCache.key == cacheKey && time.Since(githubReleaseCache.fetchedAt) < githubReleaseCacheTTL {
+		artifacts := append([]remoteDownloadArtifact(nil), githubReleaseCache.artifacts...)
+		checksumURL := githubReleaseCache.checksumURL
+		githubReleaseCache.mu.Unlock()
+		return artifacts, checksumURL, nil
+	}
+	githubReleaseCache.mu.Unlock()
+
+	apiURL := strings.TrimRight(githubReleaseAPIBaseURL, "/") + "/repos/" + repository + "/releases/latest"
+	if tag != "" {
+		apiURL = strings.TrimRight(githubReleaseAPIBaseURL, "/") + "/repos/" + repository + "/releases/tags/" + url.PathEscape(tag)
+	}
+
+	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, "", fmt.Errorf("create GitHub release request: %w", err)
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "DeskGo-Relay")
+
+	resp, err := githubReleaseHTTPClient.Do(req)
+	if err != nil {
+		return nil, "", fmt.Errorf("fetch GitHub release assets: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("GitHub release API returned %s", resp.Status)
+	}
+
+	var release githubReleaseResponse
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return nil, "", fmt.Errorf("decode GitHub release assets: %w", err)
+	}
+
+	artifacts := make([]remoteDownloadArtifact, 0, len(release.Assets))
+	checksumURL := ""
+	for _, asset := range release.Assets {
+		if asset.Name == "SHA256SUMS.txt" {
+			checksumURL = asset.BrowserDownloadURL
+			continue
+		}
+
+		artifacts = append(artifacts, remoteDownloadArtifact{
+			FileName: asset.Name,
+			URL:      asset.BrowserDownloadURL,
+		})
+	}
+
+	githubReleaseCache.mu.Lock()
+	githubReleaseCache.key = cacheKey
+	githubReleaseCache.fetchedAt = time.Now()
+	githubReleaseCache.artifacts = append([]remoteDownloadArtifact(nil), artifacts...)
+	githubReleaseCache.checksumURL = checksumURL
+	githubReleaseCache.mu.Unlock()
+
+	return artifacts, checksumURL, nil
 }
 
 func parseDownloadName(name string) (parsedDownload, bool) {

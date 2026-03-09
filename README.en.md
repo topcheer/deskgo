@@ -4,6 +4,7 @@ DeskGo is a Go-based remote desktop streaming stack composed of a Desktop CLI, a
 This repository has been cleaned up to remove the old experimental scope and now focuses on native desktop capture, WebSocket relay delivery, browser viewing, and multi-architecture releases.
 
 - Upstream repository: <https://github.com/topcheer/deskgo>
+- Live demo: <https://deskgo.zty8.cn>
 - Chinese README: [`README.md`](README.md)
 - Build matrix: [`docs/BUILD_MATRIX.en.md`](docs/BUILD_MATRIX.en.md)
 - Deployment guide: [`docs/DEPLOYMENT.en.md`](docs/DEPLOYMENT.en.md)

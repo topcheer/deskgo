@@ -4,6 +4,7 @@ DeskGo 是一个以 Go 编写的远程桌面串流方案，包含 Desktop CLI、
 当前仓库已经完成遗留实验代码清理，聚焦在原生桌面采集、WebSocket 中继、浏览器查看与多架构发布。
 
 - 上游仓库：<https://github.com/topcheer/deskgo>
+- 在线 Demo：<https://deskgo.zty8.cn>
 - 英文文档：[`README.en.md`](README.en.md)
 - 构建矩阵：[`docs/BUILD_MATRIX.md`](docs/BUILD_MATRIX.md)
 - 部署指南：[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
