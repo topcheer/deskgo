@@ -173,6 +173,79 @@ jobs:
           name: desktop-darwin-${{ matrix.arch_label }}
           path: dist/${{ matrix.artifact }}
 
+  sign-windows-artifacts:
+    name: Sign Windows artifacts
+    runs-on: windows-latest
+    needs:
+      - relay-matrix
+      - desktop-cross
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install osslsigncode
+        run: |
+          choco install osslsigncode -y
+          osslsigncode --version
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: 'windows-*'
+          merge-multiple: true
+          path: dist
+      - name: Decode certificate
+        shell: pwsh
+        run: |
+          $certBase64 = "${{ secrets.CERTIFICATE_PFX_BASE64 }}"
+          if ($certBase64) {
+            $certBytes = [System.Convert]::FromBase64String($certBase64)
+            [System.IO.File]::WriteAllBytes("certificate.pfx", $certBytes)
+            Write-Host "Certificate decoded successfully"
+          } else {
+            Write-Host "Warning: CERTIFICATE_PFX_BASE64 secret not found, skipping signing"
+          }
+      - name: Sign Windows executables
+        shell: pwsh
+        if: secrets.CERTIFICATE_PFX_BASE64 != ''
+        run: |
+          Get-ChildItem -Path dist -Filter *.exe | ForEach-Object {
+            $exeFile = $_.FullName
+            $signedFile = "$exeFile.signed"
+            $artifactName = $_.Name
+
+            Write-Host "Signing $artifactName..."
+            osslsigncode sign `
+              -pkcs12 certificate.pfx `
+              -pass "${{ secrets.CERTIFICATE_PASSWORD }}" `
+              -n "DeskGo" `
+              -i "https://github.com/topcheer/deskgo" `
+              -t http://timestamp.digicert.com `
+              -h sha256 `
+              -in $exeFile `
+              -out $signedFile
+
+            Move-Item -Force $signedFile $exeFile
+            Write-Host "✓ $artifactName signed"
+          }
+      - name: Upload signed Windows artifacts separately
+        uses: actions/upload-artifact@v4
+        if: secrets.CERTIFICATE_PFX_BASE64 != ''
+        with:
+          name: windows-signed
+          path: dist/*.exe
+      - name: Verify signatures
+        shell: pwsh
+        continue-on-error: true
+        if: secrets.CERTIFICATE_PFX_BASE64 != ''
+        run: |
+          Get-ChildItem -Path dist -Filter *.exe | ForEach-Object {
+            Write-Host "Verifying $($_.Name)..."
+            osslsigncode verify -in $_.FullName | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "✓ $($_.Name) signature verified"
+            } else {
+              Write-Host "⚠ $($_.Name) verification warning (expected for self-signed certificates)"
+            }
+          }
+          Write-Host "Signature verification complete (self-signed certificates will show warnings)"
+
   package-bundle:
     name: Package artifact bundle
     runs-on: ubuntu-latest
@@ -180,6 +253,7 @@ jobs:
       - relay-matrix
       - desktop-cross
       - desktop-macos
+      - sign-windows-artifacts
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -187,6 +261,22 @@ jobs:
           pattern: '*-*'
           merge-multiple: true
           path: dist
+      - name: Replace Windows artifacts with signed versions
+        shell: bash
+        run: |
+          if ls windows-signed-* 1> /dev/null 2>&1; then
+            echo "Found signed Windows artifacts, replacing unsigned versions..."
+            for f in windows-signed-*/*.exe; do
+              if [ -f "$f" ]; then
+                basename=$(basename "$f" | sed 's/^windows-signed-//')
+                echo "  Replacing $basename with signed version"
+                cp "$f" "dist/$basename"
+              fi
+            done
+            echo "✓ Windows artifacts replaced with signed versions"
+          else
+            echo "No signed Windows artifacts found, using unsigned versions"
+          fi
       - name: Include autostart installer scripts
         shell: bash
         run: |
