@@ -42,3 +42,14 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Code signing certificates (keep private keys secure)
+scripts/certs/*.pfx
+scripts/certs/*.key
+scripts/certs/*.p12
+scripts/certs/private.key
+scripts/certs/certificate.pfx
+scripts/certs/certificate.p12
+
+# Allow public certificates to be committed
+!scripts/certs/*.cer
