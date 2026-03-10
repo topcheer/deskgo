@@ -263,27 +263,32 @@ jobs:
       - sign-windows-artifacts
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - name: Download all artifacts (except signed)
+        uses: actions/download-artifact@v4
         with:
           pattern: '*-*'
           merge-multiple: true
           path: dist
-      - name: Replace Windows artifacts with signed versions
+      - name: Remove unsigned Windows executables
         shell: bash
         run: |
-          # Check if windows-signed artifact exists
-          if compgen -G "windows-signed/*.exe" > /dev/null; then
-            echo "Found signed Windows artifacts, replacing unsigned versions..."
-            for f in windows-signed/*.exe; do
-              if [ -f "$f" ]; then
-                basename=$(basename "$f")
-                echo "  Replacing $basename with signed version"
-                cp "$f" "dist/$basename"
-              fi
-            done
-            echo "✓ Windows artifacts replaced with signed versions"
+          echo "Removing unsigned Windows executables..."
+          rm -f dist/*-windows-*.exe
+          echo "✓ Unsigned Windows files removed"
+      - name: Download signed Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-signed
+          path: dist-signed
+      - name: Move signed Windows executables to dist
+        shell: bash
+        run: |
+          if ls dist-signed/*.exe 1> /dev/null 2>&1; then
+            echo "Found signed Windows artifacts, adding to dist..."
+            cp dist-signed/*.exe dist/
+            echo "✓ Signed Windows artifacts added to dist"
           else
-            echo "No signed Windows artifacts found, using unsigned versions"
+            echo "Warning: No signed Windows artifacts found"
           fi
       - name: Include autostart installer scripts
         shell: bash
