@@ -1,0 +1,178 @@
+name: Build and Sign Windows Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v0.1.5)'
+        required: false
+        default: 'latest'
+
+jobs:
+  build-and-sign-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Install osslsigncode
+        run: |
+          choco install osslsigncode -y
+          osslsigncode --version
+
+      - name: Create bin directory
+        run: mkdir -p bin
+
+      - name: Build Relay Server
+        run: |
+          go build -o bin/relay-server.exe ./cmd/relay
+          echo "✓ Relay server built"
+
+      - name: Build Desktop Client (with H.264)
+        run: |
+          go build -tags desktop -o bin/deskgo-desktop-h264.exe ./cmd/client
+          echo "✓ Desktop client built"
+
+      - name: Show build artifacts
+        run: |
+          echo "Build artifacts:"
+          dir bin
+
+      - name: Decode certificate
+        shell: pwsh
+        run: |
+          $certBase64 = "${{ secrets.CERTIFICATE_PFX_BASE64 }}"
+          $certBytes = [System.Convert]::FromBase64String($certBase64)
+          [System.IO.File]::WriteAllBytes("certificate.pfx", $certBytes)
+          Write-Host "Certificate decoded successfully"
+
+      - name: Sign relay-server.exe
+        shell: pwsh
+        run: |
+          osslsigncode sign `
+            -pkcs12 certificate.pfx `
+            -pass "${{ secrets.CERTIFICATE_PASSWORD }}" `
+            -n "DeskGo" `
+            -i "https://github.com/zhanju/deskgo" `
+            -t http://timestamp.digicert.com `
+            -h sha256 `
+            -in bin/relay-server.exe `
+            -out bin/relay-server-signed.exe
+
+          # Replace original with signed
+          Move-Item -Force bin/relay-server-signed.exe bin/relay-server.exe
+          Write-Host "✓ relay-server.exe signed"
+
+      - name: Sign deskgo-desktop-h264.exe
+        shell: pwsh
+        run: |
+          osslsigncode sign `
+            -pkcs12 certificate.pfx `
+            -pass "${{ secrets.CERTIFICATE_PASSWORD }}" `
+            -n "DeskGo" `
+            -i "https://github.com/zhanju/deskgo" `
+            -t http://timestamp.digicert.com `
+            -h sha256 `
+            -in bin/deskgo-desktop-h264.exe `
+            -out bin/deskgo-desktop-h264-signed.exe
+
+          # Replace original with signed
+          Move-Item -Force bin/deskgo-desktop-h264-signed.exe bin/deskgo-desktop-h264.exe
+          Write-Host "✓ deskgo-desktop-h264.exe signed"
+
+      - name: Verify signatures
+        shell: pwsh
+        run: |
+          Write-Host "Verifying relay-server.exe..."
+          osslsigncode verify -in bin/relay-server.exe | Select-String -Pattern "Signed"
+
+          Write-Host "Verifying deskgo-desktop-h264.exe..."
+          osslsigncode verify -in bin/deskgo-desktop-h264.exe | Select-String -Pattern "Signed"
+
+      - name: Create release package
+        shell: pwsh
+        run: |
+          mkdir -p release
+
+          # Copy signed executables
+          Copy-Item bin/relay-server.exe release/
+          Copy-Item bin/deskgo-desktop-h264.exe release/
+
+          # Copy web files
+          if (Test-Path web) {
+            Copy-Item -Recurse web release/
+          }
+
+          # Copy README
+          if (Test-Path README.md) {
+            Copy-Item README.md release/
+          }
+
+          # Create certificate info file
+          @"
+          Certificate Information
+          ========================
+
+          This software is signed with a self-signed certificate.
+
+          To install the certificate:
+          1. Download DeskGo-Dev.cer from the repository
+          2. Double-click on DeskGo-Dev.cer
+          3. Click 'Install Certificate'
+          4. Select 'Local Computer' (requires admin rights)
+          5. Place in 'Trusted Root Certification Authorities'
+          6. Click 'Finish'
+
+          After installing, you will not see security warnings.
+
+          Certificate Details:
+          - Subject: CN=DeskGo Development, O=DeskGo, C=CN
+          - Valid: 10 years from creation
+          - Algorithm: SHA-256 with RSA 2048-bit
+          "@ | Out-File -FilePath release/CERTIFICATE.txt -Encoding UTF8
+
+      - name: List release contents
+        shell: pwsh
+        run: |
+          Write-Host "Release package contents:"
+          dir release
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deskgo-windows-release
+          path: release/
+
+      - name: Create Release Zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path release\* -DestinationPath deskgo-windows-release.zip
+
+      - name: Upload Release Zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: deskgo-windows-release-zip
+          path: deskgo-windows-release.zip
+
+      - name: Build Summary
+        run: |
+          echo "### :rocket: Build Complete!" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "**Signed Binaries:**" >> $env:GITHUB_STEP_SUMMARY
+          echo "- relay-server.exe" >> $env:GITHUB_STEP_SUMMARY
+          echo "- deskgo-desktop-h264.exe" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "**Certificate:** Self-signed (DeskGo-Dev)" >> $env:GITHUB_STEP_SUMMARY
+          echo "**Algorithm:** SHA-256 + RSA 2048-bit" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo ":package: Download from **Artifacts** section below!" >> $env:GITHUB_STEP_SUMMARY
