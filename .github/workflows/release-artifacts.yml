@@ -187,9 +187,14 @@ jobs:
           osslsigncode --version
       - uses: actions/download-artifact@v4
         with:
-          pattern: 'windows-*'
+          pattern: '*-windows-*'
           merge-multiple: true
           path: dist
+      - name: List downloaded files
+        shell: pwsh
+        run: |
+          Write-Host "Downloaded files:"
+          Get-ChildItem -Path dist -Recurse | Select-Object FullName
       - name: Decode certificate
         shell: pwsh
         run: |
