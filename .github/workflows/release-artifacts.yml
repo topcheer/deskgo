@@ -198,12 +198,14 @@ jobs:
             $certBytes = [System.Convert]::FromBase64String($certBase64)
             [System.IO.File]::WriteAllBytes("certificate.pfx", $certBytes)
             Write-Host "Certificate decoded successfully"
+            "HAS_CERT=true" >> $env:GITHUB_ENV
           } else {
             Write-Host "Warning: CERTIFICATE_PFX_BASE64 secret not found, skipping signing"
+            "HAS_CERT=false" >> $env:GITHUB_ENV
           }
       - name: Sign Windows executables
         shell: pwsh
-        if: secrets.CERTIFICATE_PFX_BASE64 != ''
+        if: env.HAS_CERT == 'true'
         run: |
           Get-ChildItem -Path dist -Filter *.exe | ForEach-Object {
             $exeFile = $_.FullName
@@ -226,14 +228,14 @@ jobs:
           }
       - name: Upload signed Windows artifacts separately
         uses: actions/upload-artifact@v4
-        if: secrets.CERTIFICATE_PFX_BASE64 != ''
+        if: env.HAS_CERT == 'true'
         with:
           name: windows-signed
           path: dist/*.exe
       - name: Verify signatures
         shell: pwsh
         continue-on-error: true
-        if: secrets.CERTIFICATE_PFX_BASE64 != ''
+        if: env.HAS_CERT == 'true'
         run: |
           Get-ChildItem -Path dist -Filter *.exe | ForEach-Object {
             Write-Host "Verifying $($_.Name)..."
