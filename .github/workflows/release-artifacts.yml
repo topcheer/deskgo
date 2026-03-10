@@ -271,11 +271,12 @@ jobs:
       - name: Replace Windows artifacts with signed versions
         shell: bash
         run: |
-          if ls windows-signed-* 1> /dev/null 2>&1; then
+          # Check if windows-signed artifact exists
+          if compgen -G "windows-signed/*.exe" > /dev/null; then
             echo "Found signed Windows artifacts, replacing unsigned versions..."
-            for f in windows-signed-*/*.exe; do
+            for f in windows-signed/*.exe; do
               if [ -f "$f" ]; then
-                basename=$(basename "$f" | sed 's/^windows-signed-//')
+                basename=$(basename "$f")
                 echo "  Replacing $basename with signed version"
                 cp "$f" "dist/$basename"
               fi
