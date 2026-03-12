@@ -9,7 +9,7 @@ H.264 硬件编码器接口
 支持平台：
 - macOS: VideoToolbox (硬件加速)
 - Linux: ffmpeg/libx264（软件编码，要求系统安装 ffmpeg）
-- Windows: 空实现（回退到 JPEG）
+- Windows: Media Foundation（原生系统编码器）
 */
 
 import (

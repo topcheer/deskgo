@@ -1,10 +1,10 @@
-//go:build desktop && !darwin && !linux
-// +build desktop,!darwin,!linux
+//go:build desktop && !darwin && !linux && !windows
+// +build desktop,!darwin,!linux,!windows
 
 package main
 
 /*
-H.264 编码器空实现（当前用于 Windows 等暂未实现 H.264 的平台）
+H.264 编码器空实现（当前用于其它暂未实现 H.264 的桌面平台）
 
 自动回退到 JPEG 编码
 */
@@ -37,7 +37,7 @@ func (e *H264EncoderStub) IsHardwareAccelerated() bool {
 	return false
 }
 
-// NewH264Encoder 创建非 macOS 平台的 H.264 编码器
+// NewH264Encoder 创建其它暂未实现平台的 H.264 编码器
 func NewH264Encoder() H264Encoder {
 	return new(H264EncoderStub)
 }

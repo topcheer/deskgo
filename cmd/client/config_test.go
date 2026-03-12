@@ -6,6 +6,24 @@ import (
 	"testing"
 )
 
+func TestDefaultPlatformCodecForGOOS(t *testing.T) {
+	testCases := []struct {
+		goos string
+		want string
+	}{
+		{goos: "darwin", want: "h264"},
+		{goos: "linux", want: "h264"},
+		{goos: "windows", want: "h264"},
+		{goos: "freebsd", want: "jpeg"},
+	}
+
+	for _, tc := range testCases {
+		if got := defaultPlatformCodecForGOOS(tc.goos); got != tc.want {
+			t.Fatalf("defaultPlatformCodecForGOOS(%q) = %q, want %q", tc.goos, got, tc.want)
+		}
+	}
+}
+
 func TestLoadConfigCreatesExplicitPath(t *testing.T) {
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "nested", "autostart.json")

@@ -506,7 +506,7 @@
         // 检测编解码器支持
         function detectCodecSupport() {
             return {
-                h264: 'VideoDecoder' in window && 'VideoEncoder' in window,
+                h264: 'VideoDecoder' in window && 'EncodedVideoChunk' in window,
                 jpeg: true
             };
         }
@@ -514,7 +514,8 @@
         const codecSupport = detectCodecSupport();
         console.log('=== 编解码器支持检测 ===');
         console.log('VideoDecoder 可用:', 'VideoDecoder' in window);
-        console.log('VideoEncoder 可用:', 'VideoEncoder' in window);
+        console.log('EncodedVideoChunk 可用:', 'EncodedVideoChunk' in window);
+        console.log('VideoEncoder 可用(仅采集端需要):', 'VideoEncoder' in window);
         console.log('H.264 支持:', codecSupport.h264);
         console.log('JPEG 支持:', codecSupport.jpeg);
         console.log('完整对象:', codecSupport);
@@ -1263,6 +1264,13 @@
                 case 'input':
                     // 输入事件确认
                     break;
+
+                case 'pong':
+                    if (typeof data.timestamp === 'number') {
+                        const latency = Math.round(performance.now() - data.timestamp);
+                        document.getElementById('latency').textContent = latency + 'ms';
+                    }
+                    break;
             }
         }
 
@@ -1420,19 +1428,6 @@
             // 记录发送时间用于延迟计算
             ws.lastPing = start;
         }
-
-        // 接收pong消息计算延迟
-        ws?.addEventListener('message', (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.type === 'pong') {
-                    const latency = Math.round(performance.now() - data.timestamp);
-                    document.getElementById('latency').textContent = latency + 'ms';
-                }
-            } catch (e) {
-                // 忽略非JSON消息
-            }
-        });
 
         // 定期测量延迟
         setInterval(measureLatency, 2000);

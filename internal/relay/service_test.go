@@ -187,3 +187,53 @@ func TestSessionIDsAreCaseInsensitive(t *testing.T) {
 		t.Fatalf("close viewer: %v", err)
 	}
 }
+
+func TestViewerPingGetsRelayPongWithoutForwardingToCLI(t *testing.T) {
+	_, wsBaseURL := newRelayTestServer(t)
+	sessionID := "relay-ping-pong"
+
+	cliConn := dialTestConn(t, wsBaseURL+"/"+sessionID+"?type=client&user_id=cli")
+	cliMessages := startDesktopMessageReader(t, cliConn)
+	viewer := dialTestConn(t, wsBaseURL+"/"+sessionID+"?type=web&user_id=viewer")
+
+	startMsg := awaitDesktopMessage(t, cliMessages, 2*time.Second)
+	if startMsg.Type != "start_capture" {
+		t.Fatalf("expected start_capture, got %q", startMsg.Type)
+	}
+
+	const timestamp = 12345.678
+	if err := viewer.WriteJSON(DesktopMessage{
+		Type:      "ping",
+		SessionID: sessionID,
+		UserID:    "viewer",
+		Timestamp: timestamp,
+	}); err != nil {
+		t.Fatalf("write ping: %v", err)
+	}
+
+	var pong DesktopMessage
+	if err := viewer.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		t.Fatalf("set viewer read deadline: %v", err)
+	}
+	if err := viewer.ReadJSON(&pong); err != nil {
+		t.Fatalf("read pong: %v", err)
+	}
+	if pong.Type != "pong" {
+		t.Fatalf("expected pong, got %q", pong.Type)
+	}
+	if pong.Timestamp != timestamp {
+		t.Fatalf("expected timestamp %v, got %v", timestamp, pong.Timestamp)
+	}
+
+	select {
+	case result, ok := <-cliMessages:
+		if !ok {
+			t.Fatal("desktop message channel closed unexpectedly")
+		}
+		if result.err != nil {
+			t.Fatalf("unexpected cli read error: %v", result.err)
+		}
+		t.Fatalf("expected ping to stay in relay, got forwarded message %q", result.msg.Type)
+	case <-time.After(300 * time.Millisecond):
+	}
+}

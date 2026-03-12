@@ -428,6 +428,24 @@ func handleWebMessages(conn *managedConn, session *Session, userID string, servi
 			continue
 		}
 
+		if msg.Type == "ping" {
+			pongPayload, err := json.Marshal(DesktopMessage{
+				Type:      "pong",
+				SessionID: session.ID,
+				UserID:    "relay",
+				Timestamp: msg.Timestamp,
+			})
+			if err != nil {
+				log.Printf("序列化 pong 消息失败: %v", err)
+				continue
+			}
+			if err := conn.WriteMessage(websocket.TextMessage, pongPayload); err != nil {
+				log.Printf("发送 pong 消息失败: %v", err)
+				return
+			}
+			continue
+		}
+
 		if err := writeToCLI(session, message); err != nil {
 			if errors.Is(err, errCLIUnavailable) {
 				continue

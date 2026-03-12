@@ -50,8 +50,12 @@ func DefaultConfig() Config {
 }
 
 func defaultPlatformCodec() string {
-	switch runtime.GOOS {
-	case "darwin", "linux":
+	return defaultPlatformCodecForGOOS(runtime.GOOS)
+}
+
+func defaultPlatformCodecForGOOS(goos string) string {
+	switch goos {
+	case "darwin", "linux", "windows":
 		return "h264"
 	default:
 		return "jpeg"

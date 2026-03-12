@@ -593,6 +593,9 @@ func (c *DesktopCapture) handleControlEvent(event *ControlEvent) {
 		}
 		c.mu.Unlock()
 
+	case "ping":
+		// Web 端延迟探测消息由 relay 处理；这里静默忽略以兼容旧 relay。
+
 	default:
 		log.Printf("⚠️  未知消息类型: %s", event.Type)
 	}

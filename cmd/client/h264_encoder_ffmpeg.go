@@ -5,13 +5,14 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"image"
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,7 +25,6 @@ type ffmpegEncodedPacket struct {
 }
 
 // H264EncoderFFmpeg 使用 ffmpeg/libx264 提供跨平台的软件 H.264 编码能力。
-// 目前主要用于 Linux 桌面 CLI。
 type H264EncoderFFmpeg struct {
 	mu sync.Mutex
 
@@ -39,6 +39,28 @@ type H264EncoderFFmpeg struct {
 	processErr  chan error
 	processDone chan struct{}
 	stopCh      chan struct{}
+}
+
+type safeStringBuffer struct {
+	mu    sync.Mutex
+	lines []string
+}
+
+func (b *safeStringBuffer) AppendLine(line string) {
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" {
+		return
+	}
+
+	b.mu.Lock()
+	b.lines = append(b.lines, trimmed)
+	b.mu.Unlock()
+}
+
+func (b *safeStringBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return strings.Join(b.lines, "\n")
 }
 
 func newFFmpegH264Encoder() *H264EncoderFFmpeg {
@@ -131,17 +153,11 @@ func (e *H264EncoderFFmpeg) IsHardwareAccelerated() bool {
 }
 
 func (e *H264EncoderFFmpeg) startProcessLocked() error {
-	ffmpegPath, err := exec.LookPath("ffmpeg")
+	ffmpegPath, err := findFFmpegBinary()
 	if err != nil {
-		return fmt.Errorf("未找到 ffmpeg，请先安装 ffmpeg 后再启用 Linux H.264: %w", err)
+		return err
 	}
-
-	statsReader, statsWriter, err := os.Pipe()
-	if err != nil {
-		return fmt.Errorf("创建 ffmpeg 统计管道失败: %w", err)
-	}
-
-	stderrBuffer := new(bytes.Buffer)
+	stderrLog := new(safeStringBuffer)
 	args := []string{
 		"-hide_banner",
 		"-loglevel", "error",
@@ -166,46 +182,38 @@ func (e *H264EncoderFFmpeg) startProcessLocked() error {
 		"-refs", "1",
 		"-flush_packets", "1",
 		"-x264-params", "repeat-headers=1:aud=1:scenecut=0",
-		"-stats_enc_post", "pipe:3",
+		"-stats_enc_post", "pipe:2",
 		"-stats_enc_post_fmt", "{size} {key}",
 		"-f", "h264",
 		"pipe:1",
 	}
 
 	cmd := exec.Command(ffmpegPath, args...)
-	cmd.Stderr = stderrBuffer
-	cmd.ExtraFiles = []*os.File{statsWriter}
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		statsReader.Close()
-		statsWriter.Close()
 		return fmt.Errorf("创建 ffmpeg stdin 管道失败: %w", err)
 	}
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		statsReader.Close()
-		statsWriter.Close()
 		return fmt.Errorf("创建 ffmpeg stdout 管道失败: %w", err)
 	}
 
-	if err := cmd.Start(); err != nil {
-		statsReader.Close()
-		statsWriter.Close()
-		return fmt.Errorf("启动 ffmpeg H.264 编码器失败: %w", err)
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("创建 ffmpeg stderr 管道失败: %w", err)
 	}
 
-	if err := statsWriter.Close(); err != nil {
-		statsReader.Close()
-		_ = cmd.Process.Kill()
-		return fmt.Errorf("关闭 ffmpeg 统计写端失败: %w", err)
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("启动 ffmpeg H.264 编码器失败: %w", err)
 	}
 
 	packetCh := make(chan ffmpegEncodedPacket, 8)
 	errCh := make(chan error, 1)
 	doneCh := make(chan struct{})
 	stopCh := make(chan struct{})
+	readDoneCh := make(chan struct{})
 
 	e.cmd = cmd
 	e.stdin = stdin
@@ -214,11 +222,15 @@ func (e *H264EncoderFFmpeg) startProcessLocked() error {
 	e.processDone = doneCh
 	e.stopCh = stopCh
 
-	go readFFmpegPackets(stdout, statsReader, packetCh, errCh, stopCh)
+	go func() {
+		defer close(readDoneCh)
+		readFFmpegPackets(stdout, stderr, packetCh, errCh, stopCh, stderrLog)
+	}()
 	go func() {
 		defer close(doneCh)
 		if waitErr := cmd.Wait(); waitErr != nil {
-			sendFFmpegError(errCh, fmt.Errorf("ffmpeg H.264 进程退出: %w%s", waitErr, formatFFmpegStderr(stderrBuffer)))
+			<-readDoneCh
+			sendFFmpegError(errCh, fmt.Errorf("ffmpeg H.264 进程退出: %w%s", waitErr, formatFFmpegStderr(stderrLog.String())))
 		}
 	}()
 
@@ -257,7 +269,7 @@ func (e *H264EncoderFFmpeg) stopProcessLocked() {
 	}
 }
 
-func readFFmpegPackets(stdout io.Reader, statsReader io.ReadCloser, packetCh chan<- ffmpegEncodedPacket, errCh chan<- error, stopCh <-chan struct{}) {
+func readFFmpegPackets(stdout io.Reader, statsReader io.ReadCloser, packetCh chan<- ffmpegEncodedPacket, errCh chan<- error, stopCh <-chan struct{}, stderrLog *safeStringBuffer) {
 	defer close(packetCh)
 	defer statsReader.Close()
 
@@ -265,10 +277,13 @@ func readFFmpegPackets(stdout io.Reader, statsReader io.ReadCloser, packetCh cha
 	scanner.Buffer(make([]byte, 0, 1024), 1024*1024)
 
 	for scanner.Scan() {
-		size, isKeyFrame, err := parseFFmpegPacketStats(scanner.Text())
-		if err != nil {
-			sendFFmpegError(errCh, err)
-			return
+		line := scanner.Text()
+		size, isKeyFrame, ok := parseFFmpegPacketStatsLine(line)
+		if !ok {
+			if stderrLog != nil {
+				stderrLog.AppendLine(line)
+			}
+			continue
 		}
 		if size <= 0 {
 			continue
@@ -291,22 +306,29 @@ func readFFmpegPackets(stdout io.Reader, statsReader io.ReadCloser, packetCh cha
 	}
 
 	if err := scanner.Err(); err != nil {
-		sendFFmpegError(errCh, fmt.Errorf("读取 ffmpeg 编码统计失败: %w", err))
+		sendFFmpegError(errCh, fmt.Errorf("读取 ffmpeg 编码统计失败: %w%s", err, formatFFmpegStderr(stderrLog.String())))
 	}
 }
 
-func parseFFmpegPacketStats(line string) (int, bool, error) {
+func parseFFmpegPacketStatsLine(line string) (int, bool, bool) {
 	fields := strings.Fields(strings.TrimSpace(line))
-	if len(fields) < 2 {
-		return 0, false, fmt.Errorf("无法解析 ffmpeg 编码统计: %q", line)
+	if len(fields) != 2 {
+		return 0, false, false
 	}
 
 	size, err := strconv.Atoi(fields[0])
-	if err != nil {
-		return 0, false, fmt.Errorf("解析 ffmpeg 包大小失败: %w", err)
+	if err != nil || size < 0 {
+		return 0, false, false
 	}
 
-	return size, strings.EqualFold(fields[1], "K"), nil
+	switch {
+	case strings.EqualFold(fields[1], "K"):
+		return size, true, true
+	case strings.EqualFold(fields[1], "N"):
+		return size, false, true
+	default:
+		return 0, false, false
+	}
 }
 
 func extractAVCCPacket(packet ffmpegEncodedPacket) ([]byte, bool, []byte, []byte, error) {
@@ -474,15 +496,36 @@ func sendFFmpegError(errCh chan<- error, err error) {
 	}
 }
 
-func formatFFmpegStderr(stderr *bytes.Buffer) string {
-	if stderr == nil {
-		return ""
-	}
-
-	message := strings.TrimSpace(stderr.String())
+func formatFFmpegStderr(message string) string {
+	message = strings.TrimSpace(message)
 	if message == "" {
 		return ""
 	}
 
 	return ": " + message
+}
+
+func findFFmpegBinary() (string, error) {
+	candidates := []string{"ffmpeg"}
+	if runtime.GOOS == "windows" {
+		candidates = []string{"ffmpeg.exe", "ffmpeg"}
+	}
+
+	if executablePath, err := os.Executable(); err == nil {
+		executableDir := filepath.Dir(executablePath)
+		for _, candidateName := range candidates {
+			candidatePath := filepath.Join(executableDir, candidateName)
+			if info, statErr := os.Stat(candidatePath); statErr == nil && !info.IsDir() {
+				return candidatePath, nil
+			}
+		}
+	}
+
+	for _, candidateName := range candidates {
+		if candidatePath, err := exec.LookPath(candidateName); err == nil {
+			return candidatePath, nil
+		}
+	}
+
+	return "", fmt.Errorf("未找到 ffmpeg，请先安装 ffmpeg，或将 ffmpeg 可执行文件放到 DeskGo 可执行文件同目录后再启用 H.264")
 }
