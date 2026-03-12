@@ -86,6 +86,7 @@ type DesktopCapture struct {
 	h264Config      H264Config
 	useH264         bool
 	h264Initialized bool // H.264 编码器是否已初始化
+	h264Warmup      bool // H.264 编码器是否正在等待首个可输出帧
 	forceKeyFrame   bool // 强制发送关键帧
 	pendingKeyFrame bool // 编码器初始化完成后是否需要强制关键帧
 	pendingStart    bool // 捕获循环停止后是否需要立即重启
@@ -346,11 +347,13 @@ func (c *DesktopCapture) captureAndSend() error {
 			log.Printf("⚠️  H.264 编码器初始化失败: %v，回退到 JPEG", err)
 			c.mu.Lock()
 			c.useH264 = false
+			c.h264Warmup = false
 			c.mu.Unlock()
 		} else {
 			log.Printf("✅ H.264 编码器初始化成功")
 			c.mu.Lock()
 			c.h264Initialized = true
+			c.h264Warmup = false
 
 			// 检查是否有待处理的关键帧请求
 			if c.pendingKeyFrame {
@@ -384,13 +387,29 @@ func (c *DesktopCapture) captureAndSend() error {
 		// H.264 编码路径
 		h264Data, _, sps, pps, err := c.h264Encoder.Encode(img, forceKeyFrame)
 		if err != nil {
+			if isRetryableH264EncodeError(err) {
+				c.mu.Lock()
+				shouldLogWarmup := !c.h264Warmup
+				c.h264Warmup = true
+				c.mu.Unlock()
+				if shouldLogWarmup {
+					log.Printf("ℹ️  H.264 编码器正在预热，等待更多输入帧后再输出")
+				}
+				return nil
+			}
+
 			// 编码失败，回退到 JPEG
 			log.Printf("⚠️  H.264 编码失败: %v，回退到 JPEG", err)
 			c.mu.Lock()
 			c.useH264 = false
 			c.h264Initialized = false
+			c.h264Warmup = false
 			c.mu.Unlock()
 		} else {
+			c.mu.Lock()
+			c.h264Warmup = false
+			c.mu.Unlock()
+
 			// H.264 编码成功
 			// 过滤 SEI NALU（类型6），只保留视频 NALU
 			filteredH264Data := filterSEINALUs(h264Data)
@@ -573,6 +592,7 @@ func (c *DesktopCapture) handleControlEvent(event *ControlEvent) {
 			log.Printf("⚠️  浏览器不支持 H.264，回退到 JPEG")
 			c.useH264 = false
 			c.h264Initialized = false
+			c.h264Warmup = false
 		}
 		c.mu.Unlock()
 

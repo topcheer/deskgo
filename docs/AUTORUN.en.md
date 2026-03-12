@@ -80,7 +80,7 @@ The script walks through:
 - fixed session name
 - release version to install
 
-> Note: Windows autostart currently supports `jpeg` only because the Windows H.264 autostart encoder path is not implemented yet.
+> Note: Windows autostart now defaults to `h264` using the native Media Foundation encoder; you can still force `jpeg` for compatibility if needed.
 > The default Windows install root is `%LOCALAPPDATA%\DeskGo` and logs are written to `%LOCALAPPDATA%\DeskGo\logs\desktop.log`; if the machine has just logged in and networking is still coming up, the hidden launcher retries a few times automatically.
 
 ## Unattended install
@@ -113,6 +113,7 @@ If you want restart semantics on Linux and your user systemd session is reliable
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 install `
   -RelayServer https://deskgo.example.com `
+  -Codec h264 `
   -Session office-pc `
   -Version v0.1.1 `
   -NonInteractive

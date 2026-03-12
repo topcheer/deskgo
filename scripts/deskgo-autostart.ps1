@@ -196,9 +196,13 @@ function Get-InstallRoot {
 function Ensure-CodecSupported {
     param([string]$CodecValue)
 
-    if ($CodecValue -ne 'jpeg') {
-        Fail '当前 Windows 自动运行模式仅支持 JPEG。H.264 目前没有 Windows 自动运行编码实现。'
+    if ($CodecValue -ne 'jpeg' -and $CodecValue -ne 'h264') {
+        Fail 'Windows 自动运行模式仅支持 jpeg 或 h264。'
     }
+}
+
+function Get-DefaultCodec {
+    return 'h264'
 }
 
 function Write-FileContent {
@@ -475,7 +479,7 @@ function Collect-InteractiveInstallOptions {
     }
 
     if (-not $Codec) {
-        $script:Codec = Read-DefaultValue -Prompt 'Codec（Windows 当前仅支持 jpeg）' -DefaultValue 'jpeg'
+        $script:Codec = Read-DefaultValue -Prompt 'Codec（jpeg 或 h264，推荐 h264）' -DefaultValue (Get-DefaultCodec)
     }
 
     if (-not $Session) {
@@ -493,7 +497,7 @@ function Install-DeskGoAutostart {
     $resolvedVersion = Normalize-Version -Value $Version
     $relayInput = if ([string]::IsNullOrWhiteSpace($RelayServer)) { 'wss://deskgo.ystone.us/api/desktop' } else { $RelayServer }
     $resolvedRelay = Normalize-RelayServerUrl -Value $relayInput
-    $resolvedCodec = if ([string]::IsNullOrWhiteSpace($Codec)) { 'jpeg' } else { $Codec.ToLowerInvariant() }
+    $resolvedCodec = if ([string]::IsNullOrWhiteSpace($Codec)) { Get-DefaultCodec } else { $Codec.ToLowerInvariant() }
     Ensure-CodecSupported -CodecValue $resolvedCodec
 
     $sessionInput = if ([string]::IsNullOrWhiteSpace($Session)) { Get-DefaultSessionName } else { $Session }

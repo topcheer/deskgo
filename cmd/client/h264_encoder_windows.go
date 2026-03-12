@@ -27,8 +27,6 @@ var (
 	procMFCreateMediaType    = mfplatDLL.NewProc("MFCreateMediaType")
 	procMFCreateSample       = mfplatDLL.NewProc("MFCreateSample")
 	procMFCreateMemoryBuffer = mfplatDLL.NewProc("MFCreateMemoryBuffer")
-	procMFSetAttributeSize   = mfplatDLL.NewProc("MFSetAttributeSize")
-	procMFSetAttributeRatio  = mfplatDLL.NewProc("MFSetAttributeRatio")
 )
 
 const (
@@ -649,7 +647,7 @@ func (s *windowsMFSession) collectOutput() ([]byte, error) {
 				if combined.Len() > 0 {
 					break
 				}
-				return nil, fmt.Errorf("Windows H.264 编码器尚未返回完整帧: %w", err)
+				return nil, fmt.Errorf("%w: Windows H.264 编码器尚未返回完整帧 (%v)", errH264EncoderNeedsMoreInput, err)
 			}
 			releaseOutputData(providedSample, &outputData)
 			return nil, fmt.Errorf("Windows H.264 ProcessOutput 失败: %w", err)
@@ -916,23 +914,15 @@ func mfCreateMemoryBuffer(size uint32) (*imfMediaBuffer, error) {
 }
 
 func mfSetAttributeSize(attributes *imfAttributes, key *winGUID, width uint32, height uint32) error {
-	hr, _, _ := procMFSetAttributeSize.Call(
-		uintptr(unsafe.Pointer(attributes)),
-		uintptr(unsafe.Pointer(key)),
-		uintptr(width),
-		uintptr(height),
-	)
-	return checkHRESULT("MFSetAttributeSize", hr)
+	return attributes.SetUINT64(key, packTwoUINT32(width, height))
 }
 
 func mfSetAttributeRatio(attributes *imfAttributes, key *winGUID, numerator uint32, denominator uint32) error {
-	hr, _, _ := procMFSetAttributeRatio.Call(
-		uintptr(unsafe.Pointer(attributes)),
-		uintptr(unsafe.Pointer(key)),
-		uintptr(numerator),
-		uintptr(denominator),
-	)
-	return checkHRESULT("MFSetAttributeRatio", hr)
+	return attributes.SetUINT64(key, packTwoUINT32(numerator, denominator))
+}
+
+func packTwoUINT32(high uint32, low uint32) uint64 {
+	return (uint64(high) << 32) | uint64(low)
 }
 
 func (a *imfAttributes) SetGUID(key *winGUID, value *winGUID) error {
@@ -953,6 +943,16 @@ func (a *imfAttributes) SetUINT32(key *winGUID, value uint32) error {
 		uintptr(value),
 	)
 	return checkHRESULT("IMFAttributes::SetUINT32", hr)
+}
+
+func (a *imfAttributes) SetUINT64(key *winGUID, value uint64) error {
+	hr, _, _ := syscall.SyscallN(
+		a.lpVtbl.SetUINT64,
+		uintptr(unsafe.Pointer(a)),
+		uintptr(unsafe.Pointer(key)),
+		uintptr(value),
+	)
+	return checkHRESULT("IMFAttributes::SetUINT64", hr)
 }
 
 func (a *imfAttributes) GetBlobSize(key *winGUID) (uint32, error) {

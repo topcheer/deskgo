@@ -104,7 +104,7 @@ $script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
 $uri = "https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1?ts=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
 Remove-Item $script -ErrorAction SilentlyContinue
 Invoke-WebRequest $uri -UseBasicParsing -Headers @{ 'Cache-Control' = 'no-cache' } -OutFile $script
-powershell -ExecutionPolicy Bypass -File $script install
+powershell -ExecutionPolicy Bypass -File $script install -Codec h264
 ```
 
 上面的 `?ts=` 与 `Cache-Control: no-cache` 用于尽量绕开代理或 CDN 的陈旧缓存，确保拉到最新脚本。
@@ -120,7 +120,7 @@ macOS / Linux：
 Windows：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 install
+powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 install -Codec h264
 ```
 
 在线安装成功仍依赖 GitHub latest release 中存在匹配平台的 `deskgo-desktop-<os>-<arch>` 资产和 `SHA256SUMS.txt`；如果你要做可重复部署，请显式传入 `--version` 固定版本。

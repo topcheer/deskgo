@@ -98,7 +98,9 @@ copy_support_scripts() {
 write_checksums() {
   local checksum_file="downloads/SHA256SUMS.txt"
   local -a files=()
+  local -a sorted_files=()
   local path
+  local file
 
   for path in downloads/*; do
     [[ -f "$path" ]] || continue
@@ -114,7 +116,13 @@ write_checksums() {
     return
   fi
 
-  mapfile -t files < <(printf '%s\n' "${files[@]}" | LC_ALL=C sort)
+  while IFS= read -r file; do
+    [[ -n "$file" ]] || continue
+    sorted_files+=("$file")
+  done <<EOF
+$(printf '%s\n' "${files[@]}" | LC_ALL=C sort)
+EOF
+  files=("${sorted_files[@]}")
   : > "$checksum_file"
 
   if command -v sha256sum >/dev/null 2>&1; then

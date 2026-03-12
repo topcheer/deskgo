@@ -104,7 +104,7 @@ $script = Join-Path $env:TEMP 'deskgo-autostart.ps1'
 $uri = "https://raw.githubusercontent.com/topcheer/deskgo/master/scripts/deskgo-autostart.ps1?ts=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
 Remove-Item $script -ErrorAction SilentlyContinue
 Invoke-WebRequest $uri -UseBasicParsing -Headers @{ 'Cache-Control' = 'no-cache' } -OutFile $script
-powershell -ExecutionPolicy Bypass -File $script install
+powershell -ExecutionPolicy Bypass -File $script install -Codec h264
 ```
 
 The `?ts=` query string and `Cache-Control: no-cache` header are there to avoid stale proxy/CDN caches and force a fresh copy of the script.
@@ -120,7 +120,7 @@ macOS / Linux:
 Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 install
+powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 install -Codec h264
 ```
 
 Online installation still depends on the GitHub latest release containing the matching `deskgo-desktop-<os>-<arch>` asset and `SHA256SUMS.txt`. For repeatable rollouts, pin `--version`.

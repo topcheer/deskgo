@@ -1233,7 +1233,7 @@ bash /tmp/deskgo-autostart.sh install</code></pre>
 $uri = "{{ .AutostartPowerShellURL }}?ts=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
 Remove-Item $script -ErrorAction SilentlyContinue
 Invoke-WebRequest $uri -UseBasicParsing -Headers @{ 'Cache-Control' = 'no-cache' } -OutFile $script
-powershell -ExecutionPolicy Bypass -File $script install</code></pre>
+powershell -ExecutionPolicy Bypass -File $script install -Codec h264</code></pre>
                     </article>
                     <article class="download-card">
                         <div class="icon-wrap" aria-hidden="true">

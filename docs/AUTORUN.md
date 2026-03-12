@@ -80,7 +80,7 @@ powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 instal
 - 固定 Session 名字
 - 要安装的 release 版本
 
-> 说明：Windows 当前自动运行模式仅支持 `jpeg`，因为 H.264 的 Windows 自动运行编码路径尚未完成。
+> 说明：Windows 自动运行默认使用 `h264`，走原生 Media Foundation 编码；如需兼容旧环境，也可以显式传 `jpeg`。
 > 默认安装目录为 `%LOCALAPPDATA%\DeskGo`，日志位于 `%LOCALAPPDATA%\DeskGo\logs\desktop.log`；如果机器刚登录、网络尚未完全就绪，隐藏启动器会稍后自动重试几次。
 
 ## 非引导式安装
@@ -113,6 +113,7 @@ Linux 如果更偏向自动重启语义，也可以使用：
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\scripts\\deskgo-autostart.ps1 install `
   -RelayServer https://deskgo.example.com `
+  -Codec h264 `
   -Session office-pc `
   -Version v0.1.1 `
   -NonInteractive

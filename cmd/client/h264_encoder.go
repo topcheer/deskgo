@@ -13,8 +13,15 @@ H.264 硬件编码器接口
 */
 
 import (
+	"errors"
 	"image"
 )
+
+var errH264EncoderNeedsMoreInput = errors.New("h264 encoder needs more input")
+
+func isRetryableH264EncodeError(err error) bool {
+	return errors.Is(err, errH264EncoderNeedsMoreInput)
+}
 
 // H264Encoder H.264 编码器接口
 type H264Encoder interface {
